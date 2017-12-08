@@ -14,7 +14,7 @@ class MakeLandscape : EditorWindow {
 	bool groupEnabled;
 	float resolution = 90.0f;
 	string modelName = "dem.obj";
-	string mapName = "Textures/map.tiff";
+	string mapName = "map.tiff";
 	string done = "Generate";
 
 	public string arguments() {
