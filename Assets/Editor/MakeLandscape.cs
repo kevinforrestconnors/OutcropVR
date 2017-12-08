@@ -18,7 +18,7 @@ class MakeLandscape : EditorWindow {
 	string done = "Generate";
 
 	public string arguments() {
-		return minLong + " " + minLat + " " + maxLong + " " + maxLat + " " + resolution.ToString("R");
+		return minLong + " " + minLat + " " + maxLong + " " + maxLat + " " + resolution.ToString("R") + " " + modelName + " " + mapName;
 	}
 
 	[MenuItem ("Tools/Generate Elevation Model")]
@@ -59,10 +59,10 @@ class MakeLandscape : EditorWindow {
 			};
 
 			p.Start();
-			// Read the output - this will show is a single entry in the console - you could get  fancy and make it log for each line - but thats not why we're here
-
 			p.WaitForExit();
 			p.Close();
+
+			UnityEngine.Debug.Log("Finished Generating.  Importing...");
 		}
 	}
 }

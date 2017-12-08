@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# Kevin Connors 2017
+
 import sys, os, array, numpy, math, utm
 from urllib.request import urlopen
 from scipy.spatial import Delaunay
@@ -20,8 +22,8 @@ def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
     long_range = max_long - min_long
     lat_range = max_lat - min_lat
 
-    width = int(round(long_range / resolution_in_deg))
-    height = int(round(lat_range / resolution_in_deg))
+    width = round(long_range / resolution_in_deg)
+    height = round(lat_range / resolution_in_deg)
 
     res = urlopen(worldwind +
                  '/elev?'
@@ -49,18 +51,16 @@ def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
     if sys.byteorder == "big":
         b.byteswap()
 
-    for x in range(0, width):
+    for x in range(0, height):
         row = []
-        for y in range(0, height):
-            start = height * x
+        for y in range(0, width):
+            start = width * x
             row.append(b[start + y])
         elevation_data.append(row)
-
-
 # end function
 
 
-def fetch_image_data(min_long, min_lat, max_long, max_lat, resolution):
+def fetch_image_data(min_long, min_lat, max_long, max_lat, resolution, filename="map.tiff"):
     if (resolution < 30):
         resolution = 30
 
@@ -92,12 +92,13 @@ def fetch_image_data(min_long, min_lat, max_long, max_lat, resolution):
                  '&styles='
                  '&version=1.3.0')
 
-    f = open('map.tiff', 'wb')
+    f = open(filename, 'wb')
     f.write(res.read())
     f.close()
-
+# end function
 
 def elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution):
+
     resolution_in_deg = resolution / m_per_deg_lat
 
     data = []
@@ -125,18 +126,17 @@ def elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution):
     data.append([max(xs) + 10, max(ys) + 10, min_z - 1])
 
     return list(map(lambda e: [e[0] - mean_x, e[1] - mean_y, e[2] - min_z], data))
-
-
 # end function
 
+
 # precondition: fetch_elevation_data has been called
-def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution):
+def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filename="dem.obj"):
 
     try:
-        os.remove("dem.obj")
-        f = open("dem.obj", 'a')
+        os.remove(filename)
+        f = open(filename, 'a')
     except FileNotFoundError:
-        f = open("dem.obj", 'a')
+        f = open(filename, 'a')
 
     points = elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution)
 
@@ -144,7 +144,7 @@ def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution):
     for point in points:
         f.write("v " + str(point[0]) + " " + str(point[1]) + " " + str(point[2]) + '\n')
 
-    # writes vertex textures for uv mapping
+    # write vertex textures for uv mapping
     height = len(elevation_data)
     width = len(elevation_data[0])
 
@@ -181,9 +181,8 @@ def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution):
                          + str(simplex[2] + 1) + "/" + str(simplex[2] + 1) + '\n')
 
     f.close()
-
-
 # end function
+
 
 def main():
     if len(sys.argv) == 2 and sys.argv[1] == 'default':
@@ -192,8 +191,11 @@ def main():
         max_long = -79.35
         max_lat = 37.9
         resolution = 90
-    elif len(sys.argv) != 6:
-        print("Invalid number of arguments.  Usage: python objDEM.py min_long min_lat max_long max_lat resolution")
+        model_filename = "dem.obj"
+        image_filename = "map.tiff"
+    elif len(sys.argv) != 6 and len(sys.argv) != 8:
+        print("Invalid number of arguments.  Usage: python objdem.py min_long min_lat max_long max_lat resolution")
+        print("Or python objdem.py min_long min_lat max_long max_lat resolution model_filename image_filename")
         return
     else:
         min_long = float(sys.argv[1])
@@ -202,9 +204,13 @@ def main():
         max_lat = float(sys.argv[4])
         resolution = float(sys.argv[5])
 
+        if len(sys.argv) == 8:
+            model_filename = sys.argv[6]
+            image_filename = sys.argv[7]
+
     fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution)
-    fetch_image_data(min_long, min_lat, max_long, max_lat, 30)
-    write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution)
+    fetch_image_data(min_long, min_lat, max_long, max_lat, 30, filename=image_filename)
+    write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filename=model_filename)
 
     os.remove("data.bil")
 
