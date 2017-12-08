@@ -3,6 +3,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections;
+using System.Diagnostics;
 
 class MakeLandscape : EditorWindow {
 
@@ -13,9 +14,14 @@ class MakeLandscape : EditorWindow {
 	bool groupEnabled;
 	float resolution = 90.0f;
 	string modelName = "dem.obj";
-	string mapName = "map.tiff";
+	string mapName = "Textures/map.tiff";
+	string done = "Generate";
 
-	[MenuItem ("Tools/My Window")]
+	public string arguments() {
+		return minLong + " " + minLat + " " + maxLong + " " + maxLat + " " + resolution.ToString("R");
+	}
+
+	[MenuItem ("Tools/Generate Elevation Model")]
 	public static void  ShowWindow () {
 		EditorWindow.GetWindow(typeof(MakeLandscape));
 	}
@@ -34,5 +40,29 @@ class MakeLandscape : EditorWindow {
 		mapName = EditorGUILayout.TextField ("Map Filename", mapName);
 		EditorGUILayout.EndToggleGroup ();
 	
+		if (GUILayout.Button (done)) {
+			UnityEngine.Debug.Log("Generating...");
+
+			Process p = new Process();
+
+			string args = arguments ();
+				
+			p.StartInfo = new ProcessStartInfo(args) {
+				FileName="/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/bin/python3.6",
+				Arguments = Application.dataPath+"/PythonScripts/objdem.py " + args,
+				CreateNoWindow = true,
+				UseShellExecute = true,
+				RedirectStandardOutput = false,
+				RedirectStandardInput = false,
+				RedirectStandardError = false,
+				WorkingDirectory = Application.dataPath
+			};
+
+			p.Start();
+			// Read the output - this will show is a single entry in the console - you could get  fancy and make it log for each line - but thats not why we're here
+
+			p.WaitForExit();
+			p.Close();
+		}
 	}
 }
