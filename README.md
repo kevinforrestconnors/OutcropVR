@@ -2,11 +2,13 @@
 
 ## Installation
 
-1. Place `objdem.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...`  
+1. `pip install numpy && pip install scipy && pip install utm`
 
-2. Make sure `MakeLandscape.cs` is in a top-level folder called Editor.
+2. Place `objdem.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...`  
 
-3. Find the line within `MakeLandscape.cs` that says `FileName="/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/bin/python3.6"` and change the string to your python 3 path. 
+3. Make sure `MakeLandscape.cs` is in a top-level folder called Editor.
+
+4. Find the line within `MakeLandscape.cs` that says `FileName="/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/bin/python3.6"` and change the string to your python 3 path. 
 
 ## Usage
 
