@@ -2,8 +2,9 @@
 
 # Kevin Connors 2017
 
-import sys, os, array, numpy, math, utm
+import sys, os, time, array, numpy, math, utm
 from urllib.request import urlopen
+from urllib.error import HTTPError
 from scipy.spatial import Delaunay
 
 # the database
@@ -25,6 +26,8 @@ def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
     width = round(long_range / resolution_in_deg)
     height = round(lat_range / resolution_in_deg)
 
+    print("    Querying database...")
+
     res = urlopen(worldwind +
                  '/elev?'
                  'service=WMS'
@@ -40,6 +43,8 @@ def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
                  '&styles='
                  '&version=1.3.0')
 
+
+    print("    Converting data...")
     f = open('data.bil', 'wb')
     f.write(res.read())
     f.close()
@@ -57,6 +62,8 @@ def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
             start = width * x
             row.append(b[start + y])
         elevation_data.append(row)
+
+    print("    Fetched elevation data successfully.")
 # end function
 
 
@@ -77,6 +84,7 @@ def fetch_image_data(min_long, min_lat, max_long, max_lat, resolution, filename=
     width = round(long_range / resolution_in_deg)
     height = round(lat_range / resolution_in_deg)
 
+    print("    Querying database...")
     res = urlopen(worldwind +
                  '/landsat?'
                  'service=WMS'
@@ -95,6 +103,8 @@ def fetch_image_data(min_long, min_lat, max_long, max_lat, resolution, filename=
     f = open(filename, 'wb')
     f.write(res.read())
     f.close()
+
+    print("    Image created successfully.")
 # end function
 
 def elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution):
@@ -103,6 +113,7 @@ def elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution):
 
     data = []
 
+    print("    Converting points to UTM...")
     for i in range(0, len(elevation_data)):
         for j in range(0, len(elevation_data[0])):
             long = min_long + resolution_in_deg * j
@@ -140,6 +151,7 @@ def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filena
 
     points = elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution)
 
+    print("    Writing points...")
     # write vertices
     for point in points:
         f.write("v " + str(point[0]) + " " + str(point[1]) + " " + str(point[2]) + '\n')
@@ -148,6 +160,7 @@ def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filena
     height = len(elevation_data)
     width = len(elevation_data[0])
 
+    print("    UV mapping...")
     for i in range(0, height):
         for j in range(0, width):
             f.write("vt " + str(j / width) + " " + str(height - (i / height)) + ' 0\n')
@@ -161,6 +174,7 @@ def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filena
     c = len(points) - 3
     d = len(points) - 4
 
+    print("    Writing triangles...")
     # write facets
     for simplex in tris.simplices:
         # don't compute for (0,0) or (width,height)
@@ -208,11 +222,28 @@ def main():
             model_filename = sys.argv[6]
             image_filename = sys.argv[7]
 
-    fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution)
-    fetch_image_data(min_long, min_lat, max_long, max_lat, 30, filename=image_filename)
-    write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filename=model_filename)
+    print("Fetching elevation data...")
+    try:
+        fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution)
+    except HTTPError:
+        print("    Coordinate range out of bounds.  Use a range between 0.01 and 1.")
+        print("    Aborting...")
+        time.sleep(4)
 
     os.remove("data.bil")
+
+    print("Fetching image data...")
+    try:
+        fetch_image_data(min_long, min_lat, max_long, max_lat, resolution, filename=image_filename)
+    except HTTPError:
+        print("    Coordinate range out of bounds.  Use a range between 0.01 and 1.")
+        print("    Aborting...")
+        time.sleep(4)
+
+    print("Creating .obj file...")
+    write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filename=model_filename)
+    print("Created .obj file successfully.")
+    time.sleep(3)
 
 
 main()
