@@ -1,5 +1,3 @@
-﻿//C# Example
-
 using UnityEngine;
 using UnityEditor;
 using System.Collections;
@@ -15,6 +13,7 @@ class MakeLandscape : EditorWindow {
 	float resolution = 90.0f;
 	string modelName = "dem.obj";
 	string mapName = "map.tiff";
+    string warning = "Use a coordinate range between 0.01 and 1.";
 	string done = "Generate";
 
 	public string arguments() {
@@ -39,18 +38,21 @@ class MakeLandscape : EditorWindow {
 		modelName = EditorGUILayout.TextField ("Model Filename", modelName);
 		mapName = EditorGUILayout.TextField ("Map Filename", mapName);
 		EditorGUILayout.EndToggleGroup ();
-	
-		if (GUILayout.Button (done)) {
-			UnityEngine.Debug.Log("Generating...");
+
+        EditorGUILayout.LabelField(warning);
+
+
+        if (GUILayout.Button (done)) {
+
+            UnityEngine.Debug.Log("Generating...");
 
 			Process p = new Process();
 
 			string args = arguments ();
 				
 			p.StartInfo = new ProcessStartInfo(args) {
-				FileName="/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/bin/python3.6",
+				FileName= "C:/Python36-32/python.exe",
 				Arguments = Application.dataPath+"/PythonScripts/objdem.py " + args,
-				CreateNoWindow = true,
 				UseShellExecute = true,
 				RedirectStandardOutput = false,
 				RedirectStandardInput = false,
@@ -59,6 +61,7 @@ class MakeLandscape : EditorWindow {
 			};
 
 			p.Start();
+
 			p.WaitForExit();
 			p.Close();
 
