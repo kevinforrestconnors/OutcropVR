@@ -9,9 +9,12 @@ from scipy.spatial import Delaunay
 
 # the database
 worldwind = 'https://data.worldwind.arc.nasa.gov'
+m_per_deg_lat = 111619.0
 
 elevation_data = []
-m_per_deg_lat = 111619.0
+mean_x = 0
+mean_y = 0
+min_z = 0
 
 
 def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
@@ -29,20 +32,19 @@ def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
     print("    Querying database...")
 
     res = urlopen(worldwind +
-                 '/elev?'
-                 'service=WMS'
-                 '&request=GetMap'
-                 '&layers=NED'
-                 '&crs=EPSG:4326'
-                 '&format=image/bil'
-                 '&transparent=FALSE'
-                 '&width=' + str(width) +
-                 '&height=' + str(height) +
-                 '&bgcolor=0xFFFFFF'
-                 '&bbox=' + str(min_long) + ',' + str(min_lat) + ',' + str(max_long) + ',' + str(max_lat) +
-                 '&styles='
-                 '&version=1.3.0')
-
+                  '/elev?'
+                  'service=WMS'
+                  '&request=GetMap'
+                  '&layers=NED'
+                  '&crs=EPSG:4326'
+                  '&format=image/bil'
+                  '&transparent=FALSE'
+                  '&width=' + str(width) +
+                  '&height=' + str(height) +
+                  '&bgcolor=0xFFFFFF'
+                  '&bbox=' + str(min_long) + ',' + str(min_lat) + ',' + str(max_long) + ',' + str(max_lat) +
+                  '&styles='
+                  '&version=1.3.0')
 
     print("    Converting data...")
     f = open('data.bil', 'wb')
@@ -64,6 +66,8 @@ def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
         elevation_data.append(row)
 
     print("    Fetched elevation data successfully.")
+
+
 # end function
 
 
@@ -86,28 +90,33 @@ def fetch_image_data(min_long, min_lat, max_long, max_lat, resolution, filename=
 
     print("    Querying database...")
     res = urlopen(worldwind +
-                 '/landsat?'
-                 'service=WMS'
-                 '&request=GetMap'
-                 '&layers=esat'
-                 '&crs=EPSG:4326'
-                 '&format=image/tiff'
-                 '&transparent=FALSE'
-                 '&width=' + str(width) +
-                 '&height=' + str(height) +
-                 '&bgcolor=0xFFFFFF'
-                 '&bbox=' + str(min_long) + ',' + str(min_lat) + ',' + str(max_long) + ',' + str(max_lat) +
-                 '&styles='
-                 '&version=1.3.0')
+                  '/landsat?'
+                  'service=WMS'
+                  '&request=GetMap'
+                  '&layers=esat'
+                  '&crs=EPSG:4326'
+                  '&format=image/tiff'
+                  '&transparent=FALSE'
+                  '&width=' + str(width) +
+                  '&height=' + str(height) +
+                  '&bgcolor=0xFFFFFF'
+                  '&bbox=' + str(min_long) + ',' + str(min_lat) + ',' + str(max_long) + ',' + str(max_lat) +
+                  '&styles='
+                  '&version=1.3.0')
 
     f = open(filename, 'wb')
     f.write(res.read())
     f.close()
 
     print("    Image created successfully.")
+
+
 # end function
 
 def elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution):
+    global mean_x
+    global mean_y
+    global min_z
 
     resolution_in_deg = resolution / m_per_deg_lat
 
@@ -142,12 +151,11 @@ def elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution):
 
 # precondition: fetch_elevation_data has been called
 def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filename="dem.obj"):
-
     try:
         os.remove(filename)
-        f = open(filename, 'a')
+        f = open(filename, 'w')
     except FileNotFoundError:
-        f = open(filename, 'a')
+        f = open(filename, 'w')
 
     points = elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution)
 
@@ -191,15 +199,92 @@ def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filena
                     simplex[1] != d and
                     simplex[2] != d):
             f.write("f " + str(simplex[0] + 1) + "/" + str(simplex[0] + 1) + " "
-                         + str(simplex[1] + 1) + "/" + str(simplex[1] + 1) + " "
-                         + str(simplex[2] + 1) + "/" + str(simplex[2] + 1) + '\n')
+                    + str(simplex[1] + 1) + "/" + str(simplex[1] + 1) + " "
+                    + str(simplex[2] + 1) + "/" + str(simplex[2] + 1) + '\n')
 
     f.close()
 # end function
 
 
+def find_centroid_from_obj(file, zone_number, zone_letter):
+    xyz = []
+
+    with open(file) as f:
+        lines = f.readlines()
+        for line in lines:
+            if line.find("v ") == 0:
+                content = line.strip('\n').strip('v').strip().split()
+                xyz.append(content)
+
+    xs = list(map(lambda x: float(x[0]), xyz))
+    ys = list(map(lambda x: float(x[1]), xyz))
+
+    centerX = max(xs) - ((max(xs) - min(xs)) / 2)
+    centerY = max(ys) - ((max(ys) - min(ys)) / 2)
+
+    centerLat, centerLong = utm.to_latlon(centerX, centerY, zone_number, zone_letter)
+
+    return (centerLong, centerLat)
+# end function
+
+
+def scale_down_obj(file):
+    try:
+        i = file.index(".obj")
+    except ValueError:
+        print("Filename must end in .obj")
+        return
+
+    outfile = file[0:i]
+    fo = open(outfile + "Scaled.obj", "w")
+
+    xyz_points = []
+
+    f = open(file, "r")
+    lines = f.readlines()
+
+    for line in lines:
+        if line.find("v ") == 0:
+            line = line.strip('\n').strip('v').strip().split()
+            xyz_points.append([float(line[0]), float(line[1]), float(line[2])])
+
+    xyz_points = list(map(lambda e: [e[0] - mean_x, e[1] - mean_y, e[2] - min_z], xyz_points))
+
+    f.seek(0)
+    p = 0
+    for line in lines:
+        if line.find("v ") == 0:
+            line = "v " + str(xyz_points[p][0]) + " " + str(xyz_points[p][1]) + " " + str(xyz_points[p][2]) + "\n"
+            fo.write(line)
+            p += 1
+        else:
+            fo.write(line)
+# end function
+
+
 def main():
-    if len(sys.argv) == 2 and sys.argv[1] == 'default':
+    if len(sys.argv) == 10 and sys.argv[1] == "photogrammetry":
+
+        print("Constructing a DEM around photogrammetry model...")
+
+        long_range = float(sys.argv[2])
+        lat_range = float(sys.argv[3])
+        resolution = float(sys.argv[4])
+        zone_number = float(sys.argv[5])
+        zone_letter = sys.argv[6]
+        photogrammetry_filename = sys.argv[7]
+        model_filename = sys.argv[8]
+        image_filename = sys.argv[9]
+
+        print("    Finding centroid...")
+        (centroidLong, centroidLat) = find_centroid_from_obj(photogrammetry_filename, zone_number, zone_letter)
+
+        min_long = centroidLong - long_range / 2
+        min_lat = centroidLat - lat_range / 2
+        max_long = centroidLong + long_range / 2
+        max_lat = centroidLat + lat_range / 2
+
+    elif len(sys.argv) == 2 and sys.argv[1] == 'default':
         min_long = -79.65
         min_lat = 37.6
         max_long = -79.35
@@ -234,7 +319,7 @@ def main():
 
     print("Fetching image data...")
     try:
-        fetch_image_data(min_long, min_lat, max_long, max_lat, resolution, filename=image_filename)
+        fetch_image_data(min_long, min_lat, max_long, max_lat, 30, filename=image_filename)
     except HTTPError:
         print("    Coordinate range out of bounds.  Use a range between 0.01 and 1.")
         print("    Aborting...")
@@ -243,7 +328,14 @@ def main():
     print("Creating .obj file...")
     write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filename=model_filename)
     print("Created .obj file successfully.")
+
+    if len(sys.argv) == 10 and sys.argv[1] == "photogrammetry":
+        # this must be called after fetching elevation data so that it can be scaled based on the mean_x, mean_y, and min_z values
+        print("Scaling photogrammetry .obj down based on elevation data...")
+        scale_down_obj(photogrammetry_filename)
+
     time.sleep(3)
+# end function
 
 
 main()
