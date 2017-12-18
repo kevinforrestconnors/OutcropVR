@@ -6,7 +6,7 @@
 
 2. Place `objdem.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...`  
 
-3. Find the line within `Editor/MakeLandscape.cs` that says `FileName="/usr/local/Cellar/python3/3.6.3/Frameworks/Python.framework/Versions/3.6/bin/python3.6"` and change the string to your python 3 path. Repeat for files `Editor/ConvertPhotogrammetryModel.cs` and `Editor/LandscapePhotogrammetryModel.cs`.
+3. Find the line within `Editor/MakeLandscape.cs` that says `FileName="C:/Program Files/Python36/python.exe"` and change the string to your python 3 path. Repeat for files `Editor/ConvertPhotogrammetryModel.cs` and `Editor/LandscapePhotogrammetryModel.cs`.
 
 ## Usage
 
