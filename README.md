@@ -1,10 +1,11 @@
-# elevation-unity
+# OutcropVR
 
 ## Installation
+0. Install Python 3 and pip.
 
 1. `pip install numpy && pip install scipy && pip install utm`
 
-2. Place `objdem.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...`  
+2. Place `OutcropVR.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...` and browse to import the package.
 
 3. Find the line within `Editor/MakeLandscape.cs` that says `FileName="C:/Program Files/Python36/python.exe"` and change the string to your python 3 path. Repeat for files `Editor/ConvertPhotogrammetryModel.cs` and `Editor/LandscapePhotogrammetryModel.cs`.
 
