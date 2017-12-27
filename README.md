@@ -22,9 +22,9 @@ This function takes in a photogrammetry .obj file that is in UTM coordinates, an
 
 Supported texture formats: `.psd`, `.tiff`, `.jpg`, `.tga`, `.png`, `.gif`, `.bmp`, `.iff`, `.pict`.
 
-### Tools/Make Elevation Model around Photogrammetry Model
+### Tools/Make Elevation Model Around Photogrammetry Model
 
-Use the Unity menu to select Tools/Make Elevation Model around Photogrammetry Model.  This function takes in a photogrammetry .obj file that is in UTM coordinates, converts it to smaller numbers so that Unity can handle it, and models a landscape around the centroid of the photogrammetry model.  An unconverted UTM file is mandatory because finding the centroid requires the original georeferenced data.  If a texture file is supplied as well, it will be mapped onto the object. 
+Use the Unity menu to select Tools/Make Elevation Model Around Photogrammetry Model.  This function takes in a photogrammetry .obj file that is in UTM coordinates, converts it to smaller numbers so that Unity can handle it, and models a landscape around the centroid of the photogrammetry model.  An unconverted UTM file is mandatory because finding the centroid requires the original georeferenced data.  If a texture file is supplied as well, it will be mapped onto the object. 
 
 Supported texture formats: `.psd`, `.tiff`, `.jpg`, `.tga`, `.png`, `.gif`, `.bmp`, `.iff`, `.pict`.
 
