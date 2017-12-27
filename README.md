@@ -15,9 +15,9 @@
 
 Use the Unity menu to select Tools/Make Elevation Model from Range.  This function produces a digital elevation map of an area specified with coordinates.  Note that too large of a range (more than a degree or so) or too small (a hundreth of a degree or so) will result in an error.
 
-### Tools/Convert Photogrammetry Model to UTM
+### Tools/Localize Photogrammetry Model from UTM
 
-Use the Unity menu to select Tools/Convert Photogrammetry Model to UTM.
+Use the Unity menu to select Tools/Localize Photogrammetry Model from UTM.
 This function takes in a photogrammetry .obj file that is in UTM coordinates, and converts it into smaller numbers so that Unity can work with it.  If a texture file is supplied as well, it will be mapped onto the object. 
 
 Supported texture formats: `.psd`, `.tiff`, `.jpg`, `.tga`, `.png`, `.gif`, `.bmp`, `.iff`, `.pict`.
