@@ -29,6 +29,6 @@ Use the Unity menu to select Tools/Make Elevation Model Around Photogrammetry Mo
 Supported texture formats: `.psd`, `.tiff`, `.jpg`, `.tga`, `.png`, `.gif`, `.bmp`, `.iff`, `.pict`.
 
 
-## Troubleshooting
+## Troubleshooting Tools/
 
 This is pretty difficult because Unity doesn't allow shell scripts to redirect standard output/error, so none of the error messages that `objdem.py` generate are shown.  You can try using https://github.com/kevinforrestconnors/objdem instead, which will produce the error messages.
