@@ -31,4 +31,10 @@ Supported texture formats: `.psd`, `.tiff`, `.jpg`, `.tga`, `.png`, `.gif`, `.bm
 
 ## Troubleshooting Tools/
 
-This is pretty difficult because Unity doesn't allow shell scripts to redirect standard output/error, so none of the error messages that `objdem.py` generate are shown.  You can try using https://github.com/kevinforrestconnors/objdem instead, which will produce the error messages.
+### My Texture Looks Malformmed
+
+If you have two or more textures, this can happen.  Since we don't know which Meshparts have which texture, this can't be automated.  To fix this, manually inspect each Meshpart and under Mesh Renderer/Materials, change the size to allow for multiple textures, then put the materials in place.  I have found that the second texture should be the second element, etc.
+
+## Troubleshooting OutcropVR
+
+Do not name your GameObjects "Line", "Plane", or "Surface" because OutcropVR relies on matching these names for various functionality. 
