@@ -1,6 +1,14 @@
 # OutcropVR
 
-## Installation
+## Introduction
+
+OutcropVR is a toolkit for geologists.  One aspect of OutcropVR is of building a scene to view in VR.  OutcropVR supports creation of real-world landscape data from coordinates or georeferenced models, as well as localization from UTM values. 
+
+
+The other aspect is the "game" mode tools.  You can fly around your favorite outcrops and get unique angles that are impossible or difficult to see in real life.  With the laser pointer tool, you can create lines and planes that then display the trend/plunge or strike/dip.  
+
+
+## Installation and Setup
 0. Install Python 3 and pip.
 
 1. `pip install numpy && pip install scipy && pip install utm`
@@ -10,6 +18,12 @@
 3. Find the line within `Editor/MakeLandscape.cs` that says `FileName="C:/Program Files/Python36/python.exe"` and change the string to your python 3 path. Repeat for files `Editor/ConvertPhotogrammetryModel.cs` and `Editor/LandscapePhotogrammetryModel.cs`.
 
 ## Usage
+
+The general workflow is:
+
+1. Import files
+2. Use the `Tools` menu to localize your models and create landscapes (if desired)
+3. That's it!  Hit play and strap on your Vive gear.
 
 ### Tools/Make Elevation Model from Range
 
@@ -28,13 +42,17 @@ Use the Unity menu to select Tools/Make Elevation Model Around Photogrammetry Mo
 
 Supported texture formats: `.psd`, `.tiff`, `.jpg`, `.tga`, `.png`, `.gif`, `.bmp`, `.iff`, `.pict`.
 
-
 ## Troubleshooting Tools/
 
 ### My Texture Looks Malformmed
 
-If you have two or more textures, this can happen.  Since we don't know which Meshparts have which texture, this can't be automated.  To fix this, manually inspect each Meshpart and under Mesh Renderer/Materials, change the size to allow for multiple textures, then put the materials in place.  I have found that the second texture should be the second element, etc.
+If you have two or more textures, this can happen.  Since we don't know which Meshparts have which texture, this can't be automated.  To fix this, manually inspect each Meshpart and under `Mesh Renderer/Materials`, change the size to allow for multiple textures, then put the materials in place.  I have found that the second texture should be the second element, etc.
 
 ## Troubleshooting OutcropVR
 
-Do not name your GameObjects "Line", "Plane", or "Surface" because OutcropVR relies on matching these names for various functionality. 
+Currently, `Make Plane` is not working as intended at certain angles. 
+
+## Planned Features
+
+* A compass that shows north, as a GUI item.
+* Making surfaces with the laser pointer
