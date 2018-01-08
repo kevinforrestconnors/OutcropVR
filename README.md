@@ -17,11 +17,11 @@ The other aspect is the "game" mode tools.  You can fly around your favorite out
 
 3. Find the line within `Editor/MakeLandscape.cs` that says `FileName="C:/Program Files/Python36/python.exe"` and change the string to your python 3 path. Repeat for files `Editor/ConvertPhotogrammetryModel.cs` and `Editor/LandscapePhotogrammetryModel.cs`.
 
-## Usage
+## Creating a Scene
 
 The general workflow is:
 
-1. Import files
+1. Import models and textures to Unity
 2. Use the `Tools` menu to localize your models and create landscapes (if desired)
 3. That's it!  Hit play and strap on your Vive gear.
 
@@ -42,17 +42,47 @@ Use the Unity menu to select Tools/Make Elevation Model Around Photogrammetry Mo
 
 Supported texture formats: `.psd`, `.tiff`, `.jpg`, `.tga`, `.png`, `.gif`, `.bmp`, `.iff`, `.pict`.
 
+## In-Scene Functions
+
+### Left Controller
+
+Currently, the left controller does not have any functionality.
+
+### Right Controller
+
+* Trackpad Click (top half) - Fly forwards in the direction the controller is facing
+* Trackpad Click (bottom half) - Fly backwards in the direction the controller is facing
+* Trigger - Activates the laser pointer
+
+### Voice Commands
+
+* `Speed up` or `Increase speed`: Increases the speed at which you fly
+* `Slow down` or `Decrease speed`: Decreases the speed at which you fly
+* `Make line`: Activates the line-drawing function of the laser pointer. Hold down the trigger, say `Make line`, draw, and then release the trigger 
+* `Make plane`: Activates the line-drawing function of the laser pointer. Hold down the trigger, say `Make plane`, draw, and then release the trigger
+* `Make surface`: Unimplemented.
+* `Pause` or `Pause drawing`: Pauses the drawing.  Hold down the trigger, say `Make line`, `Make plane`, or `Make surface` to begin drawing, then say `Pause`, then say `Resume`, then release the trigger to finish drawing.;
+* `Resume` or `Resume drawing`: Resumes drawing.  See above.
+* `Delete`: Deletes a line, plane or surface that is underneath an active laser pointer.
+* `Save`: Outputs data about a line, plane, or surface that is underneath an active laser pointer, to a text file, in the format `X, Y, Z, Strike/Trend, Dip/Plunge, Type (SD or TP), ID`
+
 ## Troubleshooting Tools/
 
-### My Texture Looks Malformmed
+### I Can't See My Photogrammetry Model
+
+It's likely not been scaled down to a size Unity can handle.  Use `Tools/Localize Photogrammetry Model from UTM` to do so.
+
+### My Texture Looks Malformed
 
 If you have two or more textures, this can happen.  Since we don't know which Meshparts have which texture, this can't be automated.  To fix this, manually inspect each Meshpart and under `Mesh Renderer/Materials`, change the size to allow for multiple textures, then put the materials in place.  I have found that the second texture should be the second element, etc.
 
 ## Troubleshooting OutcropVR
 
+### `Make Plane`
 Currently, `Make Plane` is not working as intended at certain angles. 
 
 ## Planned Features
 
 * A compass that shows north, as a GUI item.
 * Making surfaces with the laser pointer
+* OpenVR support for multiple VR headsets (we only have the Vive to test on)
