@@ -1,7 +1,16 @@
 ﻿using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+
+public static class SpliceExtension
+{
+    public static List<T> Splice<T>(this List<T> list, int offset, int count)
+    {
+        return list.Skip(offset).Take(count).ToList();
+    }
+}
 
 public class Helpers : MonoBehaviour {
 
@@ -144,8 +153,7 @@ public class Helpers : MonoBehaviour {
         int n = u.GetLength(1);
 
         if (m < n) {
-            Debug.Log("SVDError: Need more rows than columns");
-            return new double[0,0];
+            throw new Exception("SVDError: Need more rows than columns");
         }
 
         double[] e = new double[n];
@@ -358,8 +366,7 @@ public class Helpers : MonoBehaviour {
                     break;  //break out of iteration loop and move on to next k value
                 }
                 if (iteration >= itmax - 1) {
-                    Debug.Log("SVDError: No convergence.");
-                    return new double[0,0];
+                    throw new Exception("SVDError: No convergence.");
                 }
                 // shift from bottom 2x2 minor
                 x = q[l];
@@ -459,4 +466,256 @@ public class Helpers : MonoBehaviour {
    
     }
 
+    private static float delaunayEpsilon = 1.0f / 1048576.0f;
+
+    private static float[,] supertriangle(float[,] points)
+    {
+        float xmin = Mathf.Infinity, ymin = Mathf.Infinity,
+        xmax = Mathf.Infinity, ymax = Mathf.Infinity;
+        int i;
+        float dx, dy, dmax, xmid, ymid;
+
+        for (i = points.GetLength(0); i != 0;  i--)
+        {
+            if (points[i,0] < xmin) xmin = points[i,0];
+            if (points[i,0] > xmax) xmax = points[i,0];
+            if (points[i,1] < ymin) ymin = points[i,1];
+            if (points[i,1] > ymax) ymax = points[i,1];
+        }
+
+        dx = xmax - xmin;
+        dy = ymax - ymin;
+        dmax = Math.Max(dx, dy);
+        xmid = xmin + dx * 0.5f;
+        ymid = ymin + dy * 0.5f;
+
+        return new float[,] {
+            { xmid - 20 * dmax, ymid - dmax },
+            { xmid, ymid + 20 * dmax },
+            { xmid + 20 * dmax, ymid - dmax }
+        };           
+    }
+
+    private static Vector3[] circumcircle(float[,] points, int i, int j, int k)
+    {
+    float   x1 = points[i,0],
+            y1 = points[i,1],
+            x2 = points[j,0],
+            y2 = points[j,1],
+            x3 = points[k,0],
+            y3 = points[k,1],
+            fabsy1y2 = Mathf.Abs(y1 - y2),
+            fabsy2y3 = Mathf.Abs(y2 - y3),
+        xc, yc, m1, m2, mx1, mx2, my1, my2, dx, dy;
+    if (fabsy1y2 < delaunayEpsilon && fabsy2y3 < delaunayEpsilon)
+        {
+            throw new Exception("DelaunayError: Coincident points");
+        }
+        
+
+    if (fabsy1y2 < delaunayEpsilon)
+    {
+        m2 = -((x3 - x2) / (y3 - y2));
+        mx2 = (x2 + x3) / 2.0f;
+        my2 = (y2 + y3) / 2.0f;
+        xc = (x2 + x1) / 2.0f;
+        yc = m2 * (xc - mx2) + my2;
+    }
+
+    else if (fabsy2y3 < delaunayEpsilon)
+    {
+        m1 = -((x2 - x1) / (y2 - y1));
+        mx1 = (x1 + x2) / 2.0f;
+        my1 = (y1 + y2) / 2.0f;
+        xc = (x3 + x2) / 2.0f;
+        yc = m1 * (xc - mx1) + my1;
+    }
+
+    else
+    {
+        m1 = -((x2 - x1) / (y2 - y1));
+        m2 = -((x3 - x2) / (y3 - y2));
+        mx1 = (x1 + x2) / 2.0f;
+        mx2 = (x2 + x3) / 2.0f;
+        my1 = (y1 + y2) / 2.0f;
+        my2 = (y2 + y3) / 2.0f;
+        xc = (m1 * mx1 - m2 * mx2 + my2 - my1) / (m1 - m2);
+        yc = (fabsy1y2 > fabsy2y3) ?
+          m1 * (xc - mx1) + my1 :
+          m2 * (xc - mx2) + my2;
+    }
+
+    dx = x2 - xc;
+    dy = y2 - yc;
+    return new Vector3[] { new Vector3(i, j, k), new Vector3(xc, yc, dx * dx + dy * dy) }; 
+}
+    
+    private static List<int> dedup(List<int> edges)
+    {
+        int i, j;
+        float a, b, m, n;
+
+        for (j = edges.Count; j != -1; j += 0)
+        {
+            b = edges[--j];
+            a = edges[--j];
+
+            for (i = j; i != 0; i += 0)
+            {
+                n = edges[--i];
+                m = edges[--i];
+
+                if ((a == m && b == n) || (a == n && b == m))
+                {
+                    edges = edges.Splice(j, 2);
+                    edges = edges.Splice(i, 2);
+
+                    break;
+                }
+            }
+        }
+
+        return edges;
+    }
+
+    private static int XPointsComparer(int i, int j, float[,] points)
+    {
+        float diff = points[j, 0] - points[i, 0];
+        if (diff < 0)
+        {
+            return -1;
+        } else if (diff > 0)
+        {
+            return 1;
+        } else
+        {
+            return i - j;
+        } 
+    }
+
+    public static List<Vector3> Delaunay(float[,] vertices)
+    {   
+        // Performs the Delaunay triangulation in 2 dimensions
+        // Converted from https://github.com/ironwallaby/delaunay
+
+        int n = vertices.GetLength(0),
+        i, j, a, b, c;
+        float dx, dy;
+
+        /* Bail if there aren't enough vertices to form any triangles. */
+        if (n < 3) { throw new Exception("DelaunayError: Not enough vertices to form any triangles."); }
+
+
+        /* Slice out the actual vertices from the passed objects. (Duplicate the
+            * array even if we don't, though, since we need to make a supertriangle
+            * later on!) */
+                
+        float[,] points = vertices.Clone() as float[,];
+
+        /* Make an array of indices into the vertex array, sorted by the
+         * vertices' x-position. Force stable sorting by comparing indices if
+         * the x-positions are equal. */
+        List<int> indices = new List<int>(n);
+
+        /* fill the array with 0..1..2..n */
+        for (i = n; i != 0; i--)
+        {
+            indices[i] = i;
+        }
+        //
+        indices.Sort((x, y) => XPointsComparer(x, y, points));
+
+        /* Next, find the vertices of the supertriangle (which contains all other
+         * triangles), and append them onto the end of a (copy of) the vertex
+         * array. */
+        float[,] pts = new float[points.GetLength(0) + 3, points.GetLength(1)];
+        float[,] st = supertriangle(points);
+        pts[points.GetLength(0), 0] = st[0, 0];
+        pts[points.GetLength(0), 1] = st[0, 1];
+        pts[points.GetLength(0) + 1, 0] = st[1, 0];
+        pts[points.GetLength(0) + 1, 1] = st[1, 1];
+        pts[points.GetLength(0) + 2, 0] = st[2, 0];
+        pts[points.GetLength(0) + 2, 1] = st[2, 1];
+
+        /* Initialize the open list (containing the supertriangle and nothing
+         * else) and the closed list (which is empty since we havn't processed
+         * any triangles yet). */
+        //return new Vector3[] { new Vector3(i, j, k), new Vector3(xc, yc, dx * dx + dy * dy) };
+        List<Vector3[]> open = new List<Vector3[]>();
+        open.Add(circumcircle(pts, n, n + 1, n + 2));
+        List<int[]> closed = new List<int[]>();
+        List<int> edges = new List<int>();
+
+        /* Incrementally add each vertex to the mesh. */
+        for (i = indices.Count; i != 0;  i--)
+        {
+
+            // empty edges array
+            edges = new List<int>();
+
+            c = indices[i];
+
+            /* For each open triangle, check to see if the current point is
+             * inside it's circumcircle. If it is, remove the triangle and add
+             * it's edges to an edge list. */
+            for (j = open.Count; j != 0; j--)
+            {
+                /* If this point is to the right of this triangle's circumcircle,
+                 * then this triangle should never get checked again. Remove it
+                 * from the open list, add it to the closed list, and skip. */
+                dx = pts[c,0] - open[j][1].x;
+                if (dx > 0.0 && dx * dx > open[j][1].z)
+                {
+                    closed.Add(new int[] { (int)open[j][0].x, (int)open[j][0].y, (int)open[j][0].z });
+                    open = open.Splice(j, 1);
+                    continue;
+                }
+
+                /* If we're outside the circumcircle, skip this triangle. */
+                dy = pts[c,1] - open[j][1].y;
+                if (dx * dx + dy * dy - open[j][1].z > delaunayEpsilon)
+                    continue;
+
+                /* Remove the triangle and add it's edges to the edge list. */
+                edges.Add((int)open[j][0].x);
+                edges.Add((int)open[j][0].y);
+                edges.Add((int)open[j][0].y);
+                edges.Add((int)open[j][0].z);
+                edges.Add((int)open[j][0].z);
+                edges.Add((int)open[j][0].x);
+
+                open = open.Splice(j, 1);
+            }
+
+            /* Remove any doubled edges. */
+            edges = dedup(edges);
+
+            /* Add a new triangle for each edge. */
+            for (j = edges.Count; j != 0; j += 0)
+            {
+                b = edges[--j];
+                a = edges[--j];
+                open.Add(circumcircle(points, a, b, c));
+            }
+        }
+
+        /* Copy any remaining open triangles to the closed list, and then
+            * remove any triangles that share a vertex with the supertriangle,
+            * building a list of triplets that represent triangles. */
+        List<Vector3> nClosed = new List<Vector3>();
+        for (i = open.Count; i != 0; i--)
+        {
+            nClosed.Add(new Vector3(open[i][0].x, open[i][0].y, open[i][0].z));
+        }
+
+        List<Vector3> nOpen = new List<Vector3>();
+
+        for (i = nClosed.Count; i != 0; i--)
+            if (nClosed[i].x < n && nClosed[i].y < n && nClosed[i].z < n)
+                nOpen.Add(new Vector3(nClosed[i].x, nClosed[i].y, nClosed[i].z));
+
+        /* Yay, we're done! */
+        return nOpen;
+
+    }
 }

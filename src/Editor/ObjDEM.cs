@@ -1,58 +1,58 @@
-#!/usr/bin/env python
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using UnityEngine;
 
-# Kevin Connors 2017
+public class ObjDEM : MonoBehaviour {
 
-import sys, os, time, array, numpy, math, utm
-from urllib.request import urlopen
-from urllib.error import HTTPError
-from scipy.spatial import Delaunay
+    private static string database = "https://data.worldwind.arc.nasa.gov";
+    private static float meterPerDegreeLat = 111619.0f;
 
-# the database
-worldwind = 'https://data.worldwind.arc.nasa.gov'
-m_per_deg_lat = 111619.0
+    private static List<int> elevationData = new List<int>();
+    private static float meanX = 0.0f;
+    private static float meanY = 0.0f;
+    private static float meanZ = 0.0f;
 
-elevation_data = []
-mean_x = 0
-mean_y = 0
-min_z = 0
+    private static IEnumerator DoWWW(string url)
+    {
+    // from https://forum.unity.com/threads/www-is-not-ready-downloading-yet.131989/
+        WWW hs_post = new WWW(url);
+        yield return hs_post;
+    }
+
+    public static void FetchElevationData(float minLong, float maxLong, float minLat, float maxLat, float resolution)
+    {
+        if (resolution < 30)
+        {
+            resolution = 30;
+        }
+
+        float resolutionInDeg = resolution / meterPerDegreeLat;
+        
+        float longRange = maxLong - minLong;
+        float latRange = maxLat - minLat;
+
+        int width = (int)Mathf.Round(longRange / resolutionInDeg);
+        int height = (int)Mathf.Round(latRange / resolutionInDeg);
+
+        //print("    Querying database...");
+        string req = database + "/elev?service=WMS&request=GetMap&layers=mergedSrtm&crs=EPSG:4326&format=image/bil&transparent=FALSE&width=" + width.ToString() + "&height=" + height.ToString() + "&bgcolor=0xFFFFFF&bbox=" + minLong.ToString() + "," + minLat.ToString() + "," + maxLong.ToString() + "," + maxLat.ToString() + "&styles=&version=1.3.0";
+        StartCoroutine(DoWWW(req));
 
 
-def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
-    if (resolution < 30):
-        resolution = 30
 
-    resolution_in_deg = resolution / m_per_deg_lat
 
-    long_range = max_long - min_long
-    lat_range = max_lat - min_lat
+       Debug.Log(res.text);
 
-    width = round(long_range / resolution_in_deg)
-    height = round(lat_range / resolution_in_deg)
-
-    print("    Querying database...")
-
-    res = urlopen(worldwind +
-                  '/elev?'
-                  'service=WMS'
-                  '&request=GetMap'
-                  '&layers=mergedSrtm'
-                  '&crs=EPSG:4326'
-                  '&format=image/bil'
-                  '&transparent=FALSE'
-                  '&width=' + str(width) +
-                  '&height=' + str(height) +
-                  '&bgcolor=0xFFFFFF'
-                  '&bbox=' + str(min_long) + ',' + str(min_lat) + ',' + str(max_long) + ',' + str(max_lat) +
-                  '&styles='
-                  '&version=1.3.0')
-
-    print("    Converting data...")
-    f = open('data.bil', 'wb')
+        /*
+        //print("    Converting data...");
+        f = open('data.bil', 'wb')
     f.write(res.read())
     f.close()
 
     # Read from file
-    b = array.array("h")
+        b = array.array("h")
     with open("data.bil", "rb") as f:
         b.fromfile(f, width * height)
     if sys.byteorder == "big":
@@ -66,6 +66,13 @@ def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
         elevation_data.append(row)
 
     print("    Fetched elevation data successfully.")
+    */
+    }
+
+    /*
+
+def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
+
 
 
 # end function
@@ -367,3 +374,18 @@ def main():
 
 
 main()
+
+     * 
+     */
+
+	// Use this for initialization
+	void Start () {
+        
+	}
+	
+	// Update is called once per frame
+	void Update () {
+		
+	}
+    
+}

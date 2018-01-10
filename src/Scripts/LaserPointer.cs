@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,11 +23,68 @@ public class LaserPointer : MonoBehaviour {
     private static Mode previousMode;
     private static Mode currentMode = Mode.LaserPointer;
 
+    private static float lineWidth = 1;
+
     private List<Vector3> surfacePoints;
 
     private SteamVR_Controller.Device Controller
     {
         get { return SteamVR_Controller.Input((int)trackedObj.index); }
+    }
+
+    private static Config.LineWidth CalculateLineWidthBasedOnModelSize()
+    {
+        GameObject g;
+
+        if (Config.photogrammetryModelName.Equals("undefined"))
+        {
+            g = GameObject.FindWithTag("Photogrammetry Model");
+        }
+        else
+        {
+            g = GameObject.Find(Config.photogrammetryModelName);
+        }
+
+        Vector3 modelSize = new Vector3(0, 0, 0);
+
+        Transform def = g.transform.GetChild(0);
+
+        Transform hasChildren;
+        try
+        {
+            hasChildren = def.GetChild(0);
+        }
+        catch
+        {
+            hasChildren = null;
+        }
+
+        if (!hasChildren)
+        {
+            modelSize = def.gameObject.GetComponent<Renderer>().bounds.size;
+        }
+        else
+        {
+            foreach (Transform meshPart in def)
+            {
+                modelSize += meshPart.gameObject.GetComponent<Renderer>().bounds.size;
+            }
+        }
+
+        float modelVolume = modelSize.x * modelSize.y * modelSize.z;
+
+        if (modelVolume < 5e6)
+        {
+            return Config.LineWidth.Small;
+        }
+        else if (modelVolume < 75e6)
+        {
+            return Config.LineWidth.Medium;
+        }
+        else
+        {
+            return Config.LineWidth.Large;
+        }
     }
 
     void Awake()
@@ -45,6 +103,12 @@ public class LaserPointer : MonoBehaviour {
         yellowLaser.SetActive(false);
         laser = redLaser;
         surfacePoints = new List<Vector3>();
+
+        if (!Config.useConfigLineWidth)
+        {
+            
+            lineWidth = (int)CalculateLineWidthBasedOnModelSize() * 0.01f;;
+        }
     }
 
     private void ShowLaser(RaycastHit hit)
@@ -133,6 +197,18 @@ public class LaserPointer : MonoBehaviour {
         laser.SetActive(false);
         currentMode = previousMode;
         laser = greenLaser;
+    }
+
+    // Deletes a line, plane, or surface underneath the laser pointer
+    public static void Delete()
+    {
+
+    }
+
+    // Outputs a line, plane, or surface in the form X, Y, Z, Strike/Trend, Dip/Plunge, SD/TP, ID to Output Data/sdtpdata.txt
+    public static void Save()
+    {
+
     }
 
     // Update is called once per frame
@@ -291,7 +367,7 @@ public class LaserPointer : MonoBehaviour {
 
                     // Find the length of the line and scale appropriately
                     float lineLength = Vector3.Distance(p1, p2) / 2;
-                    line.transform.localScale = new Vector3(0.05f, lineLength, 0.05f);
+                    line.transform.localScale = new Vector3(lineWidth, lineLength, lineWidth);
 
                     // Set Position
                     line.transform.position = centroid;
@@ -306,7 +382,7 @@ public class LaserPointer : MonoBehaviour {
                     int n = surfacePoints.Count;
 
                     // three points are required
-                    if (n < 3) { UnityEngine.Debug.Log("Make Plane failed: three points are required"); return; }
+                    if (n < 3) { throw new Exception("Make Plane failed: three points are required"); }
 
                     Vector3 sum = new Vector3(0.0f, 0.0f, 0.0f);
 
@@ -372,7 +448,7 @@ public class LaserPointer : MonoBehaviour {
                     float _maxXY = Mathf.Max(detX, detY);
                     float max = Mathf.Max(_maxXY, detZ);
 
-                    if (max < 0) { Debug.Log("Make Plane failed: the points don't span a line"); return; }
+                    if (max < 0) { throw new Exception("Make Plane failed: the points don't span a line"); }
 
                     Vector3 dir = new Vector3(0, 0, 0);
 
@@ -384,13 +460,10 @@ public class LaserPointer : MonoBehaviour {
                     else if (max == detY)
                     {
                         dir = new Vector3(xz * yz - xy * zz, detY, xy * xz - yz * xx);
-                    } else if (max == detZ)
-                    {
-                        dir = new Vector3(xy * yz - xz * yy, xy * xz - yz * xx, detZ);
                     } else
                     {
-                        Debug.Log("Something went wrong!");
-                    }
+                        dir = new Vector3(xy * yz - xz * yy, xy * xz - yz * xx, detZ);
+                    } 
 
                     Vector2 strikeAndDip = Helpers.GetStrikeAndDipFromNormal(dir.normalized);
 
@@ -449,33 +522,6 @@ public class LaserPointer : MonoBehaviour {
                     renderer.material.mainTexture = tex;
                     renderer.material.color = new Color(0, 100, 100);
 
-                    // Make child object, strike and dip line 
-                    /*
-                    GameObject strikeDipLine = new GameObject("Strike Line");
-                    strikeDipLine.transform.parent = strikeDipObj.transform;
-                    Mesh strikeDipLineMesh = new Mesh();
-                    strikeDipLineMesh.name = "Strike_Dip_Line_Mesh";
-                    Vector3 slp1 = new Vector3(x1 + (width / 2) - (width / 16), centroid.y, z1 + (length / 4)) - centroid;
-                    Vector3 slp2 = new Vector3(x1 + (width / 2) + (width / 16), centroid.y, z1 + (length / 4)) - centroid;
-                    Vector3 slp3 = new Vector3(x1 + (width / 2) - (width / 16), centroid.y, z2 - (length / 4)) - centroid;
-                    Vector3 slp4 = new Vector3(x1 + (width / 2) + (width / 16), centroid.y, z2 - (length / 4)) - centroid;
-
-                    strikeDipLineMesh.vertices = new Vector3[] { slp1, slp2, slp3, slp4 };
-                    strikeDipLineMesh.uv = new Vector2[] { new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0) };
-                    strikeDipLineMesh.triangles = new int[] { 0, 2, 1, 2, 3, 1 };
-                    strikeDipLineMesh.RecalculateNormals();
-
-                    MeshFilter strikeLineMeshFilter = (MeshFilter)strikeDipLine.AddComponent(typeof(MeshFilter));
-                    strikeLineMeshFilter.mesh = strikeDipLineMesh;
-                    MeshRenderer strikeLineMeshRenderer = strikeDipLine.AddComponent(typeof(MeshRenderer)) as MeshRenderer;
-                    strikeLineMeshRenderer.material.shader = Shader.Find("Standard");
-                    Texture2D strikeLineTex = new Texture2D(1, 1);
-                    strikeLineTex.SetPixel(0, 0, new Color(200, 200, 200));
-                    strikeLineTex.Apply();
-                    strikeLineMeshRenderer.material.mainTexture = strikeLineTex;
-                    strikeLineMeshRenderer.material.color = Color.white;
-                    */
-
                     // Set position
                     strikeDipObj.transform.position = centroid;
 
@@ -493,7 +539,7 @@ public class LaserPointer : MonoBehaviour {
         
                 else if (currentMode == Mode.MakingSurface)
                 {
-
+                    Debug.Log("Currently, Make Surface is unimplemented");
                 }
 
                 laser = redLaser;
