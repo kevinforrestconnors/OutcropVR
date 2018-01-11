@@ -17,6 +17,7 @@ public class OnImport : AssetPostprocessor
             RotateModel(g);
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, MakeLandscape.mapName);
+            g.tag = "Landscape";
         }
 
         if (g.name.Equals(landscapeModel2))
@@ -24,6 +25,7 @@ public class OnImport : AssetPostprocessor
             RotateModel(g);
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, LandscapePhotogrammetryModel.mapName);
+            g.tag = "Landscape";
         }
 
         if (g.name.Equals(photogrammetryModel + "Scaled"))
@@ -31,6 +33,7 @@ public class OnImport : AssetPostprocessor
             RotateModel(g);
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, ConvertPhotogrammetryModel.textureName);
+            g.tag = "Photogrammetry Model";
         } 
 
         if (g.name.Equals(photogrammetryModel2 + "Scaled"))
@@ -38,6 +41,7 @@ public class OnImport : AssetPostprocessor
             RotateModel(g);
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, LandscapePhotogrammetryModel.textureName);
+            g.tag = "Photogrammetry Model";
         }
     }
 

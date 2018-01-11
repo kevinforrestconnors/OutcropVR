@@ -21,6 +21,71 @@ public class Helpers : MonoBehaviour {
         return point - p.normal * d;
     }
 
+    public static Vector2 UTMToLatLon(double utmX, double utmY, string utmZone)
+    {
+        // from https://stackoverflow.com/questions/2689836/converting-utm-wsg84-coordinates-to-latitude-and-longitude
+        bool isNorthHemisphere = utmZone.Last() >= 'N';
+
+        var diflat = -0.00066286966871111111111111111111111111;
+        var diflon = -0.0003868060578;
+
+        var zone = int.Parse(utmZone.Remove(utmZone.Length - 1));
+        var c_sa = 6378137.000000;
+        var c_sb = 6356752.314245;
+        var e2 = Math.Pow((Math.Pow(c_sa, 2) - Math.Pow(c_sb, 2)), 0.5) / c_sb;
+        var e2cuadrada = Math.Pow(e2, 2);
+        var c = Math.Pow(c_sa, 2) / c_sb;
+        var x = utmX - 500000;
+        var y = isNorthHemisphere ? utmY : utmY - 10000000;
+
+        var s = ((zone * 6.0) - 183.0);
+        var lat = y / (c_sa * 0.9996);
+        var v = (c / Math.Pow(1 + (e2cuadrada * Math.Pow(Math.Cos(lat), 2)), 0.5)) * 0.9996;
+        var a = x / v;
+        var a1 = Math.Sin(2 * lat);
+        var a2 = a1 * Math.Pow((Math.Cos(lat)), 2);
+        var j2 = lat + (a1 / 2.0);
+        var j4 = ((3 * j2) + a2) / 4.0;
+        var j6 = ((5 * j4) + Math.Pow(a2 * (Math.Cos(lat)), 2)) / 3.0;
+        var alfa = (3.0 / 4.0) * e2cuadrada;
+        var beta = (5.0 / 3.0) * Math.Pow(alfa, 2);
+        var gama = (35.0 / 27.0) * Math.Pow(alfa, 3);
+        var bm = 0.9996 * c * (lat - alfa * j2 + beta * j4 - gama * j6);
+        var b = (y - bm) / v;
+        var epsi = ((e2cuadrada * Math.Pow(a, 2)) / 2.0) * Math.Pow((Math.Cos(lat)), 2);
+        var eps = a * (1 - (epsi / 3.0));
+        var nab = (b * (1 - epsi)) + lat;
+        var senoheps = (Math.Exp(eps) - Math.Exp(-eps)) / 2.0;
+        var delt = Math.Atan(senoheps / (Math.Cos(nab)));
+        var tao = Math.Atan(Math.Cos(delt) * Math.Tan(nab));
+
+        double longitude = ((delt * (180.0 / Math.PI)) + s) + diflon;
+        double latitude = ((lat + (1 + e2cuadrada * Math.Pow(Math.Cos(lat), 2) - (3.0 / 2.0) * e2cuadrada * Math.Sin(lat) * Math.Cos(lat) * (tao - lat)) * (tao - lat)) * (180.0 / Math.PI)) + diflat;
+
+        return new Vector2((float)longitude, (float)latitude);
+    } 
+
+    public static Vector2 LonLatToUTM(double lon, double lat)
+    {
+        // from https://stackoverflow.com/questions/176137/java-convert-lat-lon-to-utm
+        double easting;
+        double northing;
+        int zone;
+
+        zone = (int)Math.Floor(lon / 6 + 31);
+
+        easting = 0.5 * Math.Log((1 + Math.Cos(lat * Math.PI / 180) * Math.Sin(lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180)) / (1 - Math.Cos(lat * Math.PI / 180) * Math.Sin(lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180))) * 0.9996 * 6399593.62 / Math.Pow((1 + Math.Pow(0.0820944379, 2) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)), 0.5) * (1 + Math.Pow(0.0820944379, 2) / 2 * Math.Pow((0.5 * Math.Log((1 + Math.Cos(lat * Math.PI / 180) * Math.Sin(lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180)) / (1 - Math.Cos(lat * Math.PI / 180) * Math.Sin(lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180)))), 2) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2) / 3) + 500000;
+        easting = Math.Round(easting * 100) * 0.01;
+        northing = (Math.Atan(Math.Tan(lat * Math.PI / 180) / Math.Cos((lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180))) - lat * Math.PI / 180) * 0.9996 * 6399593.625 / Math.Sqrt(1 + 0.006739496742 * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) * (1 + 0.006739496742 / 2 * Math.Pow(0.5 * Math.Log((1 + Math.Cos(lat * Math.PI / 180) * Math.Sin((lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180))) / (1 - Math.Cos(lat * Math.PI / 180) * Math.Sin((lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180)))), 2) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) + 0.9996 * 6399593.625 * (lat * Math.PI / 180 - 0.005054622556 * (lat * Math.PI / 180 + Math.Sin(2 * lat * Math.PI / 180) / 2) + 4.258201531e-05 * (3 * (lat * Math.PI / 180 + Math.Sin(2 * lat * Math.PI / 180) / 2) + Math.Sin(2 * lat * Math.PI / 180) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) / 4 - 1.674057895e-07 * (5 * (3 * (lat * Math.PI / 180 + Math.Sin(2 * lat * Math.PI / 180) / 2) + Math.Sin(2 * lat * Math.PI / 180) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) / 4 + Math.Sin(2 * lat * Math.PI / 180) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) / 3);
+        if (lat < 0)
+        northing = northing + 10000000;
+        northing = Math.Round(northing * 100) * 0.01;
+
+        return new Vector2((float)easting, (float)northing);
+    }
+
+
+
     /* Transforms spherical to Cartesian coordinates 
      Preconditions: theta and phi must be in radians
          */
@@ -475,7 +540,7 @@ public class Helpers : MonoBehaviour {
         int i;
         float dx, dy, dmax, xmid, ymid;
 
-        for (i = points.GetLength(0); i != 0;  i--)
+        for (i = points.GetLength(0) - 1; i != 0;  i--)
         {
             if (points[i,0] < xmin) xmin = points[i,0];
             if (points[i,0] > xmax) xmax = points[i,0];
@@ -602,6 +667,7 @@ public class Helpers : MonoBehaviour {
         i, j, a, b, c;
         float dx, dy;
 
+
         /* Bail if there aren't enough vertices to form any triangles. */
         if (n < 3) { throw new Exception("DelaunayError: Not enough vertices to form any triangles."); }
 
@@ -609,7 +675,7 @@ public class Helpers : MonoBehaviour {
         /* Slice out the actual vertices from the passed objects. (Duplicate the
             * array even if we don't, though, since we need to make a supertriangle
             * later on!) */
-                
+        
         float[,] points = vertices.Clone() as float[,];
 
         /* Make an array of indices into the vertex array, sorted by the
@@ -618,7 +684,7 @@ public class Helpers : MonoBehaviour {
         List<int> indices = new List<int>(n);
 
         /* fill the array with 0..1..2..n */
-        for (i = n; i != 0; i--)
+        for (i = n - 1; i != 0; i--)
         {
             indices[i] = i;
         }
@@ -636,7 +702,7 @@ public class Helpers : MonoBehaviour {
         pts[points.GetLength(0) + 1, 1] = st[1, 1];
         pts[points.GetLength(0) + 2, 0] = st[2, 0];
         pts[points.GetLength(0) + 2, 1] = st[2, 1];
-
+        
         /* Initialize the open list (containing the supertriangle and nothing
          * else) and the closed list (which is empty since we havn't processed
          * any triangles yet). */
@@ -645,9 +711,9 @@ public class Helpers : MonoBehaviour {
         open.Add(circumcircle(pts, n, n + 1, n + 2));
         List<int[]> closed = new List<int[]>();
         List<int> edges = new List<int>();
-
+        
         /* Incrementally add each vertex to the mesh. */
-        for (i = indices.Count; i != 0;  i--)
+        for (i = indices.Count - 1; i != 0;  i--)
         {
 
             // empty edges array
@@ -658,7 +724,7 @@ public class Helpers : MonoBehaviour {
             /* For each open triangle, check to see if the current point is
              * inside it's circumcircle. If it is, remove the triangle and add
              * it's edges to an edge list. */
-            for (j = open.Count; j != 0; j--)
+            for (j = open.Count - 1; j != 0; j--)
             {
                 /* If this point is to the right of this triangle's circumcircle,
                  * then this triangle should never get checked again. Remove it
@@ -698,19 +764,19 @@ public class Helpers : MonoBehaviour {
                 open.Add(circumcircle(points, a, b, c));
             }
         }
-
+        
         /* Copy any remaining open triangles to the closed list, and then
             * remove any triangles that share a vertex with the supertriangle,
             * building a list of triplets that represent triangles. */
         List<Vector3> nClosed = new List<Vector3>();
-        for (i = open.Count; i != 0; i--)
+        for (i = open.Count - 1; i != 0; i--)
         {
             nClosed.Add(new Vector3(open[i][0].x, open[i][0].y, open[i][0].z));
         }
 
         List<Vector3> nOpen = new List<Vector3>();
 
-        for (i = nClosed.Count; i != 0; i--)
+        for (i = nClosed.Count - 1; i != 0; i--)
             if (nClosed[i].x < n && nClosed[i].y < n && nClosed[i].z < n)
                 nOpen.Add(new Vector3(nClosed[i].x, nClosed[i].y, nClosed[i].z));
 

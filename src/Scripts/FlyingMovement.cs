@@ -25,10 +25,12 @@ public class FlyingMovement : MonoBehaviour {
             g = GameObject.Find(Config.photogrammetryModelName);
         }
 
-        Vector3 modelSize = g.GetComponent<PhotogrammetryModelProperties>().GetRange();
+        //Vector3 modelSize = g.GetComponent<PhotogrammetryModelProperties>().GetRange();
 
-        float modelHypot = Mathf.Sqrt(modelSize.x * modelSize.x + modelSize.y * modelSize.y + modelSize.z * modelSize.z);
+        //float modelHypot = Mathf.Sqrt(modelSize.x * modelSize.x + modelSize.y * modelSize.y + modelSize.z * modelSize.z);
+        
         double smallModelHypot = 1e5;
+        double modelHypot = smallModelHypot * 24.0;
 
         if (modelHypot < smallModelHypot)
         {

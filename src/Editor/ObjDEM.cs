@@ -1,27 +1,55 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
+using System.Linq;
+using UnityEditor;
 using UnityEngine;
 
-public class ObjDEM : MonoBehaviour {
+public class ObjDEM : ScriptableObject {
 
     private static string database = "https://data.worldwind.arc.nasa.gov";
     private static float meterPerDegreeLat = 111619.0f;
 
     private static List<int> elevationData = new List<int>();
+    private static int[,] ElevationData;
     private static float meanX = 0.0f;
     private static float meanY = 0.0f;
     private static float meanZ = 0.0f;
 
-    private static IEnumerator DoWWW(string url)
+    private IEnumerator WWWElevationData(string req, int width, int height)
     {
     // from https://forum.unity.com/threads/www-is-not-ready-downloading-yet.131989/
-        WWW hs_post = new WWW(url);
-        yield return hs_post;
-    }
+        WWW res = new WWW(req);
+        yield return res;
+        byte[] data = new byte[res.bytes.Length];
+        Array.Copy(res.bytes, data, res.bytes.Length);
 
-    public static void FetchElevationData(float minLong, float maxLong, float minLat, float maxLat, float resolution)
+        if (BitConverter.IsLittleEndian)
+        {
+            Array.Reverse(data);
+        }
+
+        for (int i = 0; i < data.Length; i += 2)
+        {
+            short int16 = (short)(((data[i] & 0xFF) << 8) | (data[i+1] & 0xFF));
+            elevationData.Add((int)int16);
+        }
+
+        ElevationData = new int[height, width];
+
+        for (int x = 0; x < height; x++)
+        {
+           for (int y = 0; y < width; y++)
+            {
+                int start = width * x;
+                ElevationData[x, y] = elevationData[start + y];
+            }
+        }
+    }
+    
+    // Fetches elevation data from data.worldwind.arc.nasa.gov
+    private void FetchElevationData(float minLong, float maxLong, float minLat, float maxLat, float resolution)
     {
         if (resolution < 30)
         {
@@ -38,181 +66,186 @@ public class ObjDEM : MonoBehaviour {
 
         //print("    Querying database...");
         string req = database + "/elev?service=WMS&request=GetMap&layers=mergedSrtm&crs=EPSG:4326&format=image/bil&transparent=FALSE&width=" + width.ToString() + "&height=" + height.ToString() + "&bgcolor=0xFFFFFF&bbox=" + minLong.ToString() + "," + minLat.ToString() + "," + maxLong.ToString() + "," + maxLat.ToString() + "&styles=&version=1.3.0";
-        StartCoroutine(DoWWW(req));
 
+        //  from https://stackoverflow.com/questions/33251869/how-to-use-www-in-editor-script
+        IEnumerator enumerator = WWWElevationData(req, width, height);
 
+        // Current points to null here, so move it forward
+        enumerator.MoveNext();
 
+        // This blocks, but you can always use a thread
+        while (!((WWW)(enumerator.Current)).isDone) ;
 
-       Debug.Log(res.text);
+        // This triggers your 'Debug.Log(www.text)'
+        enumerator.MoveNext();
 
-        /*
-        //print("    Converting data...");
-        f = open('data.bil', 'wb')
-    f.write(res.read())
-    f.close()
+        //print("    Fetched elevation data successfully.")
+    
+    }
 
-    # Read from file
-        b = array.array("h")
-    with open("data.bil", "rb") as f:
-        b.fromfile(f, width * height)
-    if sys.byteorder == "big":
-        b.byteswap()
+    private IEnumerator WWWImageData(string req, string outfile)
+    {
+        WWW res = new WWW(req);
+        yield return res;
 
-    for x in range(0, height):
-        row = []
-        for y in range(0, width):
-            start = width * x
-            row.append(b[start + y])
-        elevation_data.append(row)
+        File.WriteAllBytes(outfile, res.bytes);
+        AssetDatabase.Refresh();
+    }
 
-    print("    Fetched elevation data successfully.")
-    */
+    // Fetches an image from data.worldwind.arc.nasa.gov
+    private void FetchImageData(float minLong, float maxLong, float minLat, float maxLat, float resolution, string filename)
+    {
+
+        if (minLat < -60.0 || maxLat > 84.0)
+        {
+            throw new Exception("FetchImageDataError: Landsat data is not available for values of latitude outside of the range -60.0 to 84.0");
+        }
+
+        if (resolution < 30)
+        {
+            resolution = 30;
+        }
+
+        float resolutionInDeg = resolution / meterPerDegreeLat;
+
+        float longRange = maxLong - minLong;
+        float latRange = maxLat - minLat;
+
+        int width = (int)Mathf.Round(longRange / resolutionInDeg);
+        int height = (int)Mathf.Round(latRange / resolutionInDeg);
+
+        string req = database + "/landsat?service=WMS&request=GetMap&layers=mergedSrtm&crs=EPSG:4326&format=image/bil&transparent=FALSE&width=" + width.ToString() + "&height=" + height.ToString() + "&bgcolor=0xFFFFFF&bbox=" + minLong.ToString() + "," + minLat.ToString() + "," + maxLong.ToString() + "," + maxLat.ToString() + "&styles=&version=1.3.0";
+
+        IEnumerator enumerator = WWWImageData(req, filename);
+
+        // Current points to null here, so move it forward
+        enumerator.MoveNext();
+
+        // This blocks, but you can always use a thread
+        while (!((WWW)(enumerator.Current)).isDone) ;
+
+        // This triggers your 'Debug.Log(www.text)'
+        enumerator.MoveNext();
+
+        // print("    Image created successfully.")
+    }
+    
+    // converts ElevationData to a Vector3[]
+    private List<Vector3> ElevationPointsToXYZ(float minLong, float maxLong, float minLat, float maxLat, float resolution)
+    {
+        float resolutionInDeg = resolution / meterPerDegreeLat;
+
+        List<Vector3> data = new List<Vector3>();
+
+        // print("    Converting points to UTM...")
+
+        for (int i = 0; i < ElevationData.GetLength(0); i++)
+        {
+            for (int j = 0; j < ElevationData.GetLength(1); j++) {
+                double lon = minLong + resolutionInDeg * j;
+                double lat = minLat - resolutionInDeg * i;
+                Vector2 UTM = Helpers.LonLatToUTM(lon, lat);
+                float z = (float)ElevationData[i, j];
+                Vector3 point = new Vector3(Mathf.Round(UTM.x), Mathf.Round(UTM.y), z);
+                data.Add(point);
+            }
+        }
+
+        IEnumerable<float> xs = data.Select(e => e.x);
+        IEnumerable<float> ys = data.Select(e => e.y);
+        IEnumerable<float> zs = data.Select(e => e.z);
+
+        float xMin = xs.Aggregate((a, b) => a < b ? a : b);
+        float yMin = ys.Aggregate((a, b) => a < b ? a : b);
+        float zMin = zs.Aggregate((a, b) => a < b ? a : b);
+
+        float xMax = xs.Aggregate((a, b) => a > b ? a : b);
+        float yMax = ys.Aggregate((a, b) => a > b ? a : b);
+
+        meanX = Mathf.Floor((xMin + xMax) / 2);
+        meanY = Mathf.Floor((yMin + yMax) / 2);
+
+        // We put these points around the bounding box so that no weird triangles get drawn
+        data.Add(new Vector3(xMin - 10, yMin - 10, zMin - 1));
+        data.Add(new Vector3(xMin - 10, yMax + 10, zMin - 1));
+        data.Add(new Vector3(xMax + 10, yMin - 10, zMin - 1));
+        data.Add(new Vector3(xMax + 10, yMax + 10, zMin - 1));
+
+        return data.Select(p => new Vector3(p.x - meanX, p.y - meanY, p.z - Mathf.Floor(zMin))).ToList();
+    }
+
+    // Writes out points to an .obj file
+    // Precondition: FetchElevationData has been called
+    private void WritePointsToObj(float minLong, float maxLong, float minLat, float maxLat, float resolution, string filename)
+    {
+        string fp = Application.dataPath + "/" + filename;
+        File.Delete(fp);
+        File.Create(fp).Dispose();
+
+        List<Vector3> points = ElevationPointsToXYZ(minLong, maxLong, minLat, maxLat, resolution);
+
+        using (StreamWriter file = new StreamWriter(fp, true))
+        {
+            // write vertices and construct xyPoints for later use
+            float[,] xyPoints = new float[points.Count, 2];
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                Vector3 p = points[i];
+                file.WriteLine("v " + p.x + " " + p.y + " " + p.z);
+                xyPoints[i, 0] = p.x;
+                xyPoints[i, 1] = p.y;
+            }
+
+            // write vertex textures for uv mapping
+            int height = ElevationData.GetLength(0);
+            int width = ElevationData.GetLength(1);
+
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    file.WriteLine("vt " + (j / (float)width).ToString() + " " + ((height - i / (float)height)).ToString() + " 0");
+                }
+                
+            }
+            
+            List<Vector3> triangles = Helpers.Delaunay(xyPoints);
+
+            
+            int a = points.Count - 1;
+            int b = points.Count - 2;
+            int c = points.Count - 3;
+            int d = points.Count - 4;
+
+            // write facets
+            // don't compute for 0,0 or width,height
+            foreach (Vector3 simplex in triangles)
+            {
+                // cast to int since triangles are in ints, but Vector3 uses floats
+                int x = (int)simplex.x;
+                int y = (int)simplex.y;
+                int z = (int)simplex.z;
+
+                if (x != a && x != b && x != c && x != d && y != a && y != b && y != c && y != d && z != a && z != b && z != c && z != d)
+                {
+                    // we add 1 here because the .obj file indexing starts at 1, not 0.
+                    file.WriteLine("f " + (x + 1).ToString() + "/" + (x + 1).ToString() + " "
+                                        + (y + 1).ToString() + "/" + (y + 1).ToString() + " "
+                                        + (z + 1).ToString() + "/" + (z + 1).ToString());
+                }
+            }
+        }
+        
+    }
+ 
+    // returns the long/lat of the centroid of the object
+    public static Vector2 FindCentroidOfObj(string filename, string zone)
+    {
+        return new Vector2(0, 0);
     }
 
     /*
-
-def fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution):
-
-
-
-# end function
-
-
-def fetch_image_data(min_long, min_lat, max_long, max_lat, resolution=30, filename="landscape_texture.tiff"):
-
-    if min_lat < -60.0 or max_lat > 84.0:
-        print("Landsat data is not available for values of latitude outside of the range -60.0 to 84.0")
-        # TODO find a database to serve this data
-        return
-
-    if (resolution < 30):
-        resolution = 30
-
-    resolution_in_deg = resolution / m_per_deg_lat
-
-    long_range = max_long - min_long
-    lat_range = max_lat - min_lat
-
-    width = round(long_range / resolution_in_deg)
-    height = round(lat_range / resolution_in_deg)
-
-    print("    Querying database...")
-    res = urlopen(worldwind +
-                  '/landsat?'
-                  'service=WMS'
-                  '&request=GetMap'
-                  '&layers=esat'
-                  '&crs=EPSG:4326'
-                  '&format=image/tiff'
-                  '&transparent=FALSE'
-                  '&width=' + str(width) +
-                  '&height=' + str(height) +
-                  '&bgcolor=0xFFFFFF'
-                  '&bbox=' + str(min_long) + ',' + str(min_lat) + ',' + str(max_long) + ',' + str(max_lat) +
-                  '&styles='
-                  '&version=1.3.0')
-
-    f = open(filename, 'wb')
-    f.write(res.read())
-    f.close()
-
-    print("    Image created successfully.")
-
-
-# end function
-
-def elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution):
-    global mean_x
-    global mean_y
-    global min_z
-
-    resolution_in_deg = resolution / m_per_deg_lat
-
-    data = []
-
-    print("    Converting points to UTM...")
-    for i in range(0, len(elevation_data)):
-        for j in range(0, len(elevation_data[0])):
-            long = min_long + resolution_in_deg * j
-            lat = max_lat - resolution_in_deg * i
-            (x, y, _zone_num, _zone_letter) = utm.from_latlon(lat, long)
-            z = elevation_data[i][j]
-            element = [round(x), round(y), z]
-            data.append(element)
-
-    xs = list(map(lambda e: e[0], data))
-    ys = list(map(lambda e: e[1], data))
-    zs = list(map(lambda e: e[2], data))
-
-    mean_x = math.floor((min(xs) + max(xs)) / 2)
-    mean_y = math.floor((min(ys) + max(ys)) / 2)
-    min_z = math.floor(min(zs))
-
-    data.append([min(xs) - 10, min(ys) - 10, min_z - 1])
-    data.append([min(xs) - 10, max(ys) + 10, min_z - 1])
-    data.append([max(xs) + 10, min(ys) - 10, min_z - 1])
-    data.append([max(xs) + 10, max(ys) + 10, min_z - 1])
-
-    return list(map(lambda e: [e[0] - mean_x, e[1] - mean_y, e[2] - min_z], data))
-# end function
-
-
-# precondition: fetch_elevation_data has been called
-def write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filename="landscape.obj"):
-    try:
-        os.remove(filename)
-        f = open(filename, 'w')
-    except FileNotFoundError:
-        f = open(filename, 'w')
-
-    points = elevation_points_to_xyz(min_long, min_lat, max_long, max_lat, resolution)
-
-    print("    Writing points...")
-    # write vertices
-    for point in points:
-        f.write("v " + str(point[0]) + " " + str(point[1]) + " " + str(point[2]) + '\n')
-
-    # write vertex textures for uv mapping
-    height = len(elevation_data)
-    width = len(elevation_data[0])
-
-    print("    UV mapping...")
-    for i in range(0, height):
-        for j in range(0, width):
-            f.write("vt " + str(j / width) + " " + str(height - (i / height)) + ' 0\n')
-
-    xy_points = numpy.array(list(map(lambda x: [x[0], x[1]], points)))
-
-    tris = Delaunay(xy_points)
-
-    a = len(points) - 1
-    b = len(points) - 2
-    c = len(points) - 3
-    d = len(points) - 4
-
-    print("    Writing triangles...")
-    # write facets
-    for simplex in tris.simplices:
-        # don't compute for (0,0) or (width,height)
-        if (simplex[0] != a and
-                    simplex[1] != a and
-                    simplex[2] != a and
-                    simplex[0] != b and
-                    simplex[1] != b and
-                    simplex[2] != b and
-                    simplex[0] != c and
-                    simplex[1] != c and
-                    simplex[2] != c and
-                    simplex[0] != d and
-                    simplex[1] != d and
-                    simplex[2] != d):
-            f.write("f " + str(simplex[0] + 1) + "/" + str(simplex[0] + 1) + " "
-                    + str(simplex[1] + 1) + "/" + str(simplex[1] + 1) + " "
-                    + str(simplex[2] + 1) + "/" + str(simplex[2] + 1) + '\n')
-
-    f.close()
-# end function
-
 
 def find_centroid_from_obj(file, zone_number, zone_letter):
     xyz = []
@@ -234,7 +267,13 @@ def find_centroid_from_obj(file, zone_number, zone_letter):
 
     return (centerLong, centerLat)
 # end function
+*/
+    
+        public static void ScaleDownObj(string filename)
+    {
 
+    }
+        /*
 
 def scale_down_obj(file, noModel=False):
 
@@ -284,102 +323,41 @@ def scale_down_obj(file, noModel=False):
 # end function
 
 
-def main():
 
-    if len(sys.argv) == 10 and sys.argv[1] == "landscapePhotogrammetry":
+        */
 
-        print("Constructing a DEM around photogrammetry model...")
+    public void MakeLandscape(float minLong, float maxLong, float minLat, float maxLat, float resolution, string modelFilename, string imageFilename)
+    {
+        FetchElevationData(minLong, maxLong, minLat, maxLat, resolution);
+        FetchImageData(minLong, maxLong, minLat, maxLat, resolution, imageFilename);
+        WritePointsToObj(minLong, maxLong, minLat, maxLat, resolution, modelFilename);
+    }
 
-        long_range = float(sys.argv[2])
-        lat_range = float(sys.argv[3])
-        resolution = float(sys.argv[4])
-        zone_number = float(sys.argv[5])
-        zone_letter = sys.argv[6]
-        photogrammetry_filename = sys.argv[7]
-        model_filename = sys.argv[8]
-        image_filename = sys.argv[9]
+    public void ConvertPhotogrammetryModel(string photogrammetryFilename)
+    {
+        ScaleDownObj(photogrammetryFilename);
+    }
 
-        print("    Finding centroid...")
-        (centroidLong, centroidLat) = find_centroid_from_obj(photogrammetry_filename, zone_number, zone_letter)
+    public void LandscapePhotogrammetryModel(float longRange, float latRange, float resolution, string zone, string photogrammetryFilename, string modelFilename, string imageFilename)
+    {
+        //print("    Finding centroid...")
 
-        min_long = centroidLong - long_range / 2
-        min_lat = centroidLat - lat_range / 2
-        max_long = centroidLong + long_range / 2
-        max_lat = centroidLat + lat_range / 2
+        Vector2 centroid = FindCentroidOfObj(photogrammetryFilename, zone);
+        float lon = centroid.x;
+        float lat = centroid.y;
+        float minLong = lon - longRange / 2;
+        float maxLong = lon + longRange / 2;
+        float minLat = lat - latRange / 2;
+        float maxLat = lat + latRange / 2;
 
-    elif len(sys.argv) == 3 and sys.argv[1] == "convertPhotogrammetry":
+        FetchElevationData(minLong, maxLong, minLat, maxLat, resolution);
+        FetchImageData(minLong, maxLong, minLat, maxLat, resolution, imageFilename);
+        WritePointsToObj(minLong, maxLong, minLat, maxLat, resolution, modelFilename);
+        ScaleDownObj(photogrammetryFilename);
+    }
 
-        photogrammetry_filename = sys.argv[2]
-
-        print("Scaling down photogrammetry model...")
-        scale_down_obj(photogrammetry_filename, noModel=True)
-
-        print("Successfully scaled down model.")
-        time.sleep(3)
-
-        return
-
-    elif len(sys.argv) == 2 and sys.argv[1] == 'default':
-        min_long = -79.65
-        min_lat = 37.6
-        max_long = -79.35
-        max_lat = 37.9
-        resolution = 90
-        model_filename = "landscape.obj"
-        image_filename = "landscape_texture.tiff"
-    elif len(sys.argv) != 6 and len(sys.argv) != 8:
-        print("Invalid number of arguments.  Usage: python objdem.py min_long min_lat max_long max_lat resolution")
-        print("Or python objdem.py min_long min_lat max_long max_lat resolution model_filename image_filename")
-        return
-    else:
-        min_long = float(sys.argv[1])
-        min_lat = float(sys.argv[2])
-        max_long = float(sys.argv[3])
-        max_lat = float(sys.argv[4])
-        resolution = float(sys.argv[5])
-
-        if len(sys.argv) == 8:
-            model_filename = sys.argv[6]
-            image_filename = sys.argv[7]
-
-    print("Fetching elevation data...")
-    try:
-        fetch_elevation_data(min_long, min_lat, max_long, max_lat, resolution)
-    except HTTPError:
-        print("    Coordinate range out of bounds.  Use a range between 0.01 and 1.")
-        print("    Aborting...")
-        time.sleep(3)
-
-    os.remove("data.bil")
-
-    print("Fetching image data...")
-    try:
-        fetch_image_data(min_long, min_lat, max_long, max_lat, 30, filename=image_filename)
-    except HTTPError:
-        print("    Coordinate range out of bounds.  Use a range between 0.01 and 1.")
-        print("    Aborting...")
-        time.sleep(3)
-
-    print("Creating .obj file...")
-    write_points_to_obj(min_long, min_lat, max_long, max_lat, resolution, filename=model_filename)
-    print("Created .obj file successfully.")
-
-    if len(sys.argv) == 10 and sys.argv[1] == "landscapePhotogrammetry":
-        # this must be called after fetching elevation data so that it can be scaled based on the mean_x, mean_y, and min_z values
-        print("Scaling photogrammetry .obj down based on elevation data...")
-        scale_down_obj(photogrammetry_filename)
-
-    time.sleep(3)
-# end function
-
-
-main()
-
-     * 
-     */
-
-	// Use this for initialization
-	void Start () {
+    // Use this for initialization
+    void Start () {
         
 	}
 	

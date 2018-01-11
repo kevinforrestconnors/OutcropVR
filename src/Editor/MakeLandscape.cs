@@ -54,21 +54,8 @@ class MakeLandscape : EditorWindow
 
             string args = arguments();
 
-            p.StartInfo = new ProcessStartInfo(args)
-            {
-                FileName = "C:/Program Files/Python36/python.exe",
-                Arguments = Application.dataPath + "/PythonScripts/objdem.py " + args,
-                UseShellExecute = true,
-                RedirectStandardOutput = false,
-                RedirectStandardInput = false,
-                RedirectStandardError = false,
-                WorkingDirectory = Application.dataPath
-            };
-
-            p.Start();
-
-            p.WaitForExit();
-            p.Close();
+            ObjDEM objdem = CreateInstance("ObjDEM") as ObjDEM;
+            objdem.MakeLandscape(float.Parse(minLong), float.Parse(maxLong), float.Parse(minLat), float.Parse(maxLat), resolution, modelName, mapName);
 
             AssetDatabase.Refresh();
 
