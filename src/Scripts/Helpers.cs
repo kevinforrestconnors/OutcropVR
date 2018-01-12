@@ -4,14 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public static class SpliceExtension
-{
-    public static List<T> Splice<T>(this List<T> list, int offset, int count)
-    {
-        return list.Skip(offset).Take(count).ToList();
-    }
-}
-
 public class Helpers : MonoBehaviour {
 
     /* Finds a point on Plane p closest to Vector3 point */
@@ -83,8 +75,6 @@ public class Helpers : MonoBehaviour {
 
         return new Vector2((float)easting, (float)northing);
     }
-
-
 
     /* Transforms spherical to Cartesian coordinates 
      Preconditions: theta and phi must be in radians
@@ -536,11 +526,11 @@ public class Helpers : MonoBehaviour {
     private static float[,] supertriangle(float[,] points)
     {
         float xmin = Mathf.Infinity, ymin = Mathf.Infinity,
-        xmax = Mathf.Infinity, ymax = Mathf.Infinity;
+        xmax = -Mathf.Infinity, ymax = -Mathf.Infinity;
         int i;
         float dx, dy, dmax, xmid, ymid;
 
-        for (i = points.GetLength(0) - 1; i != 0;  i--)
+        for (i = points.GetLength(0) - 1; i != -1;  i--)
         {
             if (points[i,0] < xmin) xmin = points[i,0];
             if (points[i,0] > xmax) xmax = points[i,0];
@@ -550,7 +540,7 @@ public class Helpers : MonoBehaviour {
 
         dx = xmax - xmin;
         dy = ymax - ymin;
-        dmax = Math.Max(dx, dy);
+        dmax = Mathf.Max(dx, dy);
         xmid = xmin + dx * 0.5f;
         ymid = ymin + dy * 0.5f;
 
@@ -563,6 +553,7 @@ public class Helpers : MonoBehaviour {
 
     private static Vector3[] circumcircle(float[,] points, int i, int j, int k)
     {
+		
     float   x1 = points[i,0],
             y1 = points[i,1],
             x2 = points[j,0],
@@ -620,9 +611,14 @@ public class Helpers : MonoBehaviour {
         int i, j;
         float a, b, m, n;
 
-        for (j = edges.Count; j != -1; j += 0)
+        for (j = edges.Count; j != 0; j += 0)
         {
-            b = edges[--j];
+
+			while (j > edges.Count) {
+				j--;
+			}
+
+			b = edges[--j];
             a = edges[--j];
 
             for (i = j; i != 0; i += 0)
@@ -632,8 +628,8 @@ public class Helpers : MonoBehaviour {
 
                 if ((a == m && b == n) || (a == n && b == m))
                 {
-                    edges = edges.Splice(j, 2);
-                    edges = edges.Splice(i, 2);
+					edges = edges.Take(j).Concat(edges.Skip(j + 2)).ToList ();
+					edges = edges.Take(i).Concat(edges.Skip(i + 2)).ToList ();
 
                     break;
                 }
@@ -681,27 +677,37 @@ public class Helpers : MonoBehaviour {
         /* Make an array of indices into the vertex array, sorted by the
          * vertices' x-position. Force stable sorting by comparing indices if
          * the x-positions are equal. */
-        List<int> indices = new List<int>(n);
+        List<int> indices = new List<int>();
 
         /* fill the array with 0..1..2..n */
-        for (i = n - 1; i != 0; i--)
+        for (i = n - 1; i != -1; i--)
         {
-            indices[i] = i;
+			indices.Add(i);
         }
-        //
+
+        // reverse the list before sorting
+		indices.Reverse();
+
         indices.Sort((x, y) => XPointsComparer(x, y, points));
 
         /* Next, find the vertices of the supertriangle (which contains all other
          * triangles), and append them onto the end of a (copy of) the vertex
          * array. */
-        float[,] pts = new float[points.GetLength(0) + 3, points.GetLength(1)];
+		float[,] pts = new float[points.GetLength(0) + 3, points.GetLength(1)];
+
+		for (i = 0; i < points.GetLength (0); i++) {
+			for (j = 0; j < points.GetLength (1); j++) {
+				pts [i, j] = points [i, j];
+			}
+		}
+
         float[,] st = supertriangle(points);
-        pts[points.GetLength(0), 0] = st[0, 0];
-        pts[points.GetLength(0), 1] = st[0, 1];
-        pts[points.GetLength(0) + 1, 0] = st[1, 0];
-        pts[points.GetLength(0) + 1, 1] = st[1, 1];
-        pts[points.GetLength(0) + 2, 0] = st[2, 0];
-        pts[points.GetLength(0) + 2, 1] = st[2, 1];
+		pts[points.GetLength(0), 0] = st[0, 0];
+		pts[points.GetLength(0), 1] = st[0, 1];
+		pts[points.GetLength(0) + 1, 0] = st[1, 0];
+		pts[points.GetLength(0) + 1, 1] = st[1, 1];
+		pts[points.GetLength(0) + 2, 0] = st[2, 0];
+		pts[points.GetLength(0) + 2, 1] = st[2, 1];
         
         /* Initialize the open list (containing the supertriangle and nothing
          * else) and the closed list (which is empty since we havn't processed
@@ -713,7 +719,7 @@ public class Helpers : MonoBehaviour {
         List<int> edges = new List<int>();
         
         /* Incrementally add each vertex to the mesh. */
-        for (i = indices.Count - 1; i != 0;  i--)
+        for (i = indices.Count - 1; i != -1;  i--)
         {
 
             // empty edges array
@@ -724,7 +730,7 @@ public class Helpers : MonoBehaviour {
             /* For each open triangle, check to see if the current point is
              * inside it's circumcircle. If it is, remove the triangle and add
              * it's edges to an edge list. */
-            for (j = open.Count - 1; j != 0; j--)
+            for (j = open.Count - 1; j != -1; j--)
             {
                 /* If this point is to the right of this triangle's circumcircle,
                  * then this triangle should never get checked again. Remove it
@@ -733,7 +739,7 @@ public class Helpers : MonoBehaviour {
                 if (dx > 0.0 && dx * dx > open[j][1].z)
                 {
                     closed.Add(new int[] { (int)open[j][0].x, (int)open[j][0].y, (int)open[j][0].z });
-                    open = open.Splice(j, 1);
+					open = open.Take(j).Concat(open.Skip (j + 1)).ToList ();
                     continue;
                 }
 
@@ -750,7 +756,7 @@ public class Helpers : MonoBehaviour {
                 edges.Add((int)open[j][0].z);
                 edges.Add((int)open[j][0].x);
 
-                open = open.Splice(j, 1);
+				open = open.Take(j).Concat(open.Skip (j + 1)).ToList ();
             }
 
             /* Remove any doubled edges. */
@@ -761,25 +767,30 @@ public class Helpers : MonoBehaviour {
             {
                 b = edges[--j];
                 a = edges[--j];
-                open.Add(circumcircle(points, a, b, c));
+				open.Add(circumcircle(pts, a, b, c));
             }
+
         }
         
         /* Copy any remaining open triangles to the closed list, and then
             * remove any triangles that share a vertex with the supertriangle,
             * building a list of triplets that represent triangles. */
         List<Vector3> nClosed = new List<Vector3>();
-        for (i = open.Count - 1; i != 0; i--)
-        {
+        for (i = open.Count - 1; i != -1; i--)
+		{
             nClosed.Add(new Vector3(open[i][0].x, open[i][0].y, open[i][0].z));
         }
+		for (i = closed.Count - 1; i != -1; i--) {
+			nClosed.Add (new Vector3 (closed[i][0], closed[i][1], closed[i][2]));
+		}
 
         List<Vector3> nOpen = new List<Vector3>();
 
-        for (i = nClosed.Count - 1; i != 0; i--)
-            if (nClosed[i].x < n && nClosed[i].y < n && nClosed[i].z < n)
-                nOpen.Add(new Vector3(nClosed[i].x, nClosed[i].y, nClosed[i].z));
-
+		for (i = nClosed.Count - 1; i != -1; i--) {
+			if (nClosed[i].x < n && nClosed[i].y < n && nClosed[i].z < n) {
+				nOpen.Add(new Vector3(nClosed[i].x, nClosed[i].y, nClosed[i].z));
+			}
+		}
         /* Yay, we're done! */
         return nOpen;
 

@@ -88,6 +88,8 @@ public class ObjDEM : ScriptableObject {
         WWW res = new WWW(req);
         yield return res;
 
+		Debug.Log (res.bytes);
+
         File.WriteAllBytes(outfile, res.bytes);
         AssetDatabase.Refresh();
     }
@@ -114,20 +116,17 @@ public class ObjDEM : ScriptableObject {
         int width = (int)Mathf.Round(longRange / resolutionInDeg);
         int height = (int)Mathf.Round(latRange / resolutionInDeg);
 
-        string req = database + "/landsat?service=WMS&request=GetMap&layers=mergedSrtm&crs=EPSG:4326&format=image/bil&transparent=FALSE&width=" + width.ToString() + "&height=" + height.ToString() + "&bgcolor=0xFFFFFF&bbox=" + minLong.ToString() + "," + minLat.ToString() + "," + maxLong.ToString() + "," + maxLat.ToString() + "&styles=&version=1.3.0";
+        string req = database + "/landsat?service=WMS&request=GetMap&layers=esat&crs=EPSG:4326&format=image/tiff&transparent=FALSE&width=" + width.ToString() + "&height=" + height.ToString() + "&bgcolor=0xFFFFFF&bbox=" + minLong.ToString() + "," + minLat.ToString() + "," + maxLong.ToString() + "," + maxLat.ToString() + "&styles=&version=1.3.0";
 
         IEnumerator enumerator = WWWImageData(req, filename);
 
-        // Current points to null here, so move it forward
         enumerator.MoveNext();
 
         // This blocks, but you can always use a thread
         while (!((WWW)(enumerator.Current)).isDone) ;
 
-        // This triggers your 'Debug.Log(www.text)'
         enumerator.MoveNext();
 
-        // print("    Image created successfully.")
     }
     
     // converts ElevationData to a Vector3[]
@@ -146,7 +145,7 @@ public class ObjDEM : ScriptableObject {
                 double lat = minLat - resolutionInDeg * i;
                 Vector2 UTM = Helpers.LonLatToUTM(lon, lat);
                 float z = (float)ElevationData[i, j];
-                Vector3 point = new Vector3(Mathf.Round(UTM.x), Mathf.Round(UTM.y), z);
+                Vector3 point = new Vector3(UTM.x, UTM.y, z);
                 data.Add(point);
             }
         }
@@ -157,7 +156,7 @@ public class ObjDEM : ScriptableObject {
 
         float xMin = xs.Aggregate((a, b) => a < b ? a : b);
         float yMin = ys.Aggregate((a, b) => a < b ? a : b);
-        float zMin = zs.Aggregate((a, b) => a < b ? a : b);
+		float zMin = Mathf.Floor(zs.Aggregate((a, b) => a < b ? a : b));
 
         float xMax = xs.Aggregate((a, b) => a > b ? a : b);
         float yMax = ys.Aggregate((a, b) => a > b ? a : b);
@@ -171,7 +170,7 @@ public class ObjDEM : ScriptableObject {
         data.Add(new Vector3(xMax + 10, yMin - 10, zMin - 1));
         data.Add(new Vector3(xMax + 10, yMax + 10, zMin - 1));
 
-        return data.Select(p => new Vector3(p.x - meanX, p.y - meanY, p.z - Mathf.Floor(zMin))).ToList();
+        return data.Select(p => new Vector3(p.x - meanX, p.y - meanY, p.z - zMin)).ToList();
     }
 
     // Writes out points to an .obj file
@@ -205,7 +204,7 @@ public class ObjDEM : ScriptableObject {
             {
                 for (int j = 0; j < width; j++)
                 {
-                    file.WriteLine("vt " + (j / (float)width).ToString() + " " + ((height - i / (float)height)).ToString() + " 0");
+					file.WriteLine("vt " + (j / (double)width).ToString() + " " + (((double)height - i / (double)height)).ToString() + " 0");
                 }
                 
             }
@@ -328,8 +327,8 @@ def scale_down_obj(file, noModel=False):
 
     public void MakeLandscape(float minLong, float maxLong, float minLat, float maxLat, float resolution, string modelFilename, string imageFilename)
     {
-        FetchElevationData(minLong, maxLong, minLat, maxLat, resolution);
-        FetchImageData(minLong, maxLong, minLat, maxLat, resolution, imageFilename);
+		FetchImageData(minLong, maxLong, minLat, maxLat, resolution, imageFilename);
+		FetchElevationData(minLong, maxLong, minLat, maxLat, resolution);    
         WritePointsToObj(minLong, maxLong, minLat, maxLat, resolution, modelFilename);
     }
 
