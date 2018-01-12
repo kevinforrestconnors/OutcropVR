@@ -57,7 +57,7 @@ class MakeLandscape : EditorWindow
             ObjDEM objdem = CreateInstance("ObjDEM") as ObjDEM;
             objdem.MakeLandscape(float.Parse(minLong), float.Parse(maxLong), float.Parse(minLat), float.Parse(maxLat), resolution, modelName, mapName);
 
-            AssetDatabase.Refresh();
+			AssetDatabase.Refresh ();
 
             UnityEngine.Debug.Log("Finished Generating.  Importing...");
         }

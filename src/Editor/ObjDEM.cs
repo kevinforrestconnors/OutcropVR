@@ -30,10 +30,10 @@ public class ObjDEM : ScriptableObject {
             Array.Reverse(data);
         }
 
-        for (int i = 0; i < data.Length; i += 2)
+		for (int i = data.Length - 1; i != -1; i -= 2)
         {
-            short int16 = (short)(((data[i] & 0xFF) << 8) | (data[i+1] & 0xFF));
-            elevationData.Add((int)int16);
+            short int16 = (short)(((data[i-1] & 0xFF) << 8) | (data[i] & 0xFF));
+			elevationData.Add ((int)int16);
         }
 
         ElevationData = new int[height, width];
@@ -87,8 +87,6 @@ public class ObjDEM : ScriptableObject {
     {
         WWW res = new WWW(req);
         yield return res;
-
-		Debug.Log (res.bytes);
 
         File.WriteAllBytes(outfile, res.bytes);
         AssetDatabase.Refresh();
@@ -164,12 +162,6 @@ public class ObjDEM : ScriptableObject {
         meanX = Mathf.Floor((xMin + xMax) / 2);
         meanY = Mathf.Floor((yMin + yMax) / 2);
 
-        // We put these points around the bounding box so that no weird triangles get drawn
-        data.Add(new Vector3(xMin - 10, yMin - 10, zMin - 1));
-        data.Add(new Vector3(xMin - 10, yMax + 10, zMin - 1));
-        data.Add(new Vector3(xMax + 10, yMin - 10, zMin - 1));
-        data.Add(new Vector3(xMax + 10, yMax + 10, zMin - 1));
-
         return data.Select(p => new Vector3(p.x - meanX, p.y - meanY, p.z - zMin)).ToList();
     }
 
@@ -183,19 +175,26 @@ public class ObjDEM : ScriptableObject {
 
         List<Vector3> points = ElevationPointsToXYZ(minLong, maxLong, minLat, maxLat, resolution);
 
+		float[,] xyPoints = new float[points.Count, 2];
+
+		for (int i = 0; i < points.Count; i++)
+		{
+			Vector3 p = points[i];
+			xyPoints[i, 0] = p.x;
+			xyPoints[i, 1] = p.y;
+		}
+
+		List<Vector3> triangles = Helpers.Triangulate(ElevationData.GetLength(0), ElevationData.GetLength(1));
+
         using (StreamWriter file = new StreamWriter(fp, true))
         {
-            // write vertices and construct xyPoints for later use
-            float[,] xyPoints = new float[points.Count, 2];
-
-            for (int i = 0; i < points.Count; i++)
-            {
-                Vector3 p = points[i];
-                file.WriteLine("v " + p.x + " " + p.y + " " + p.z);
-                xyPoints[i, 0] = p.x;
-                xyPoints[i, 1] = p.y;
-            }
-
+           
+			for (int i = 0; i < points.Count; i++)
+			{
+				Vector3 p = points[i];
+				file.WriteLine("v " + p.x + " " + p.y + " " + p.z);
+			}
+				
             // write vertex textures for uv mapping
             int height = ElevationData.GetLength(0);
             int width = ElevationData.GetLength(1);
@@ -204,13 +203,10 @@ public class ObjDEM : ScriptableObject {
             {
                 for (int j = 0; j < width; j++)
                 {
-					file.WriteLine("vt " + (j / (double)width).ToString() + " " + (((double)height - i / (double)height)).ToString() + " 0");
+					file.WriteLine("vt " + (j / (double)width).ToString() + " " + ((height - i) / (double)height).ToString() + " 0");
                 }
                 
             }
-            
-            List<Vector3> triangles = Helpers.Delaunay(xyPoints);
-
             
             int a = points.Count - 1;
             int b = points.Count - 2;
@@ -226,13 +222,10 @@ public class ObjDEM : ScriptableObject {
                 int y = (int)simplex.y;
                 int z = (int)simplex.z;
 
-                if (x != a && x != b && x != c && x != d && y != a && y != b && y != c && y != d && z != a && z != b && z != c && z != d)
-                {
-                    // we add 1 here because the .obj file indexing starts at 1, not 0.
-                    file.WriteLine("f " + (x + 1).ToString() + "/" + (x + 1).ToString() + " "
-                                        + (y + 1).ToString() + "/" + (y + 1).ToString() + " "
-                                        + (z + 1).ToString() + "/" + (z + 1).ToString());
-                }
+                // we add 1 here because the .obj file indexing starts at 1, not 0.
+                file.WriteLine("f " + (x + 1).ToString() + "/" + (x + 1).ToString() + " "
+                                    + (y + 1).ToString() + "/" + (y + 1).ToString() + " "
+                                    + (z + 1).ToString() + "/" + (z + 1).ToString());
             }
         }
         

@@ -69,8 +69,9 @@ public class Helpers : MonoBehaviour {
         easting = 0.5 * Math.Log((1 + Math.Cos(lat * Math.PI / 180) * Math.Sin(lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180)) / (1 - Math.Cos(lat * Math.PI / 180) * Math.Sin(lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180))) * 0.9996 * 6399593.62 / Math.Pow((1 + Math.Pow(0.0820944379, 2) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)), 0.5) * (1 + Math.Pow(0.0820944379, 2) / 2 * Math.Pow((0.5 * Math.Log((1 + Math.Cos(lat * Math.PI / 180) * Math.Sin(lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180)) / (1 - Math.Cos(lat * Math.PI / 180) * Math.Sin(lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180)))), 2) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2) / 3) + 500000;
         easting = Math.Round(easting * 100) * 0.01;
         northing = (Math.Atan(Math.Tan(lat * Math.PI / 180) / Math.Cos((lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180))) - lat * Math.PI / 180) * 0.9996 * 6399593.625 / Math.Sqrt(1 + 0.006739496742 * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) * (1 + 0.006739496742 / 2 * Math.Pow(0.5 * Math.Log((1 + Math.Cos(lat * Math.PI / 180) * Math.Sin((lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180))) / (1 - Math.Cos(lat * Math.PI / 180) * Math.Sin((lon * Math.PI / 180 - (6 * zone - 183) * Math.PI / 180)))), 2) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) + 0.9996 * 6399593.625 * (lat * Math.PI / 180 - 0.005054622556 * (lat * Math.PI / 180 + Math.Sin(2 * lat * Math.PI / 180) / 2) + 4.258201531e-05 * (3 * (lat * Math.PI / 180 + Math.Sin(2 * lat * Math.PI / 180) / 2) + Math.Sin(2 * lat * Math.PI / 180) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) / 4 - 1.674057895e-07 * (5 * (3 * (lat * Math.PI / 180 + Math.Sin(2 * lat * Math.PI / 180) / 2) + Math.Sin(2 * lat * Math.PI / 180) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) / 4 + Math.Sin(2 * lat * Math.PI / 180) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2) * Math.Pow(Math.Cos(lat * Math.PI / 180), 2)) / 3);
-        if (lat < 0)
-        northing = northing + 10000000;
+		if (lat < 0) {
+			northing = northing + 10000000;
+		}
         northing = Math.Round(northing * 100) * 0.01;
 
         return new Vector2((float)easting, (float)northing);
@@ -521,7 +522,45 @@ public class Helpers : MonoBehaviour {
    
     }
 
+	public static List<Vector3> Triangulate(int width, int height) {
+
+		List<Vector3> triangles = new List<Vector3> ();
+
+		for (int i = 0; i < height - 1; i++) {
+			for (int j = 0; j < width - 1; j++) {
+				triangles.Add (new Vector3 ((i + 1) * width + j, i * width + j + 1, i * width + j));
+				triangles.Add (new Vector3 ((i + 1) * width + j, (i + 1) * width + j + 1, i * width + j + 1));
+			}
+		}
+
+		return triangles;
+	}
+
     private static float delaunayEpsilon = 1.0f / 1048576.0f;
+
+	private struct Edge {
+
+		public int p1;
+		public int p2;
+
+		public Edge(int p1, int p2) {
+			this.p1 = p1;
+			this.p2 = p2;
+		}
+
+		public bool Equals(Edge other) {
+			return p1 == other.p1 && p2 == other.p2;
+		}
+
+		public int HashCode() {
+			int result = 71;
+			int c1 = (int)(p1 ^ ((uint)p1 >> 32));
+			int c2 = (int)(p2 ^ ((uint)p2 >> 32));
+			result = 37 * result + c1;
+			result = 37 * result + c2;
+			return result;
+		}
+	}
 
     private static float[,] supertriangle(float[,] points)
     {
@@ -611,32 +650,27 @@ public class Helpers : MonoBehaviour {
         int i, j;
         float a, b, m, n;
 
-        for (j = edges.Count; j != 0; j += 0)
-        {
+		HashSet<Edge> edgeSet = new HashSet<Edge> ();
 
-			while (j > edges.Count) {
-				j--;
-			}
+		for (i = 0; i < edges.Count - 1; i++) {
 
-			b = edges[--j];
-            a = edges[--j];
+			Edge e = new Edge(edges [i], edges [i + 1]);
 
-            for (i = j; i != 0; i += 0)
-            {
-                n = edges[--i];
-                m = edges[--i];
+			if (!edgeSet.Contains(e)) {
+				edgeSet.Add(e);
+			}	
+		}
+			
+		List<Edge> tupleList = edgeSet.ToList ();
 
-                if ((a == m && b == n) || (a == n && b == m))
-                {
-					edges = edges.Take(j).Concat(edges.Skip(j + 2)).ToList ();
-					edges = edges.Take(i).Concat(edges.Skip(i + 2)).ToList ();
+		List<int> ret = new List<int> ();
 
-                    break;
-                }
-            }
-        }
+		foreach (Edge e in tupleList) {
+			ret.Add (e.p1);
+			ret.Add (e.p2);
+		}
 
-        return edges;
+		return ret;
     }
 
     private static int XPointsComparer(int i, int j, float[,] points)
@@ -739,7 +773,7 @@ public class Helpers : MonoBehaviour {
                 if (dx > 0.0 && dx * dx > open[j][1].z)
                 {
                     closed.Add(new int[] { (int)open[j][0].x, (int)open[j][0].y, (int)open[j][0].z });
-					open = open.Take(j).Concat(open.Skip (j + 1)).ToList ();
+					open.RemoveRange(j, 1);
                     continue;
                 }
 
@@ -756,7 +790,7 @@ public class Helpers : MonoBehaviour {
                 edges.Add((int)open[j][0].z);
                 edges.Add((int)open[j][0].x);
 
-				open = open.Take(j).Concat(open.Skip (j + 1)).ToList ();
+				open.RemoveRange(j, 1);
             }
 
             /* Remove any doubled edges. */
@@ -795,4 +829,5 @@ public class Helpers : MonoBehaviour {
         return nOpen;
 
     }
+	
 }
