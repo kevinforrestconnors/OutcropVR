@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -15,7 +16,10 @@ public class ObjDEM : ScriptableObject {
     private static int[,] ElevationData;
     private static float meanX = 0.0f;
     private static float meanY = 0.0f;
-    private static float meanZ = 0.0f;
+    private static float minZ = 0.0f;
+	private static float xRange = 0.0f;
+	private static float yRange = 0.0f;
+	private static float zRange = 0.0f;
 
     private IEnumerator WWWElevationData(string req, int width, int height)
     {
@@ -152,17 +156,22 @@ public class ObjDEM : ScriptableObject {
         IEnumerable<float> ys = data.Select(e => e.y);
         IEnumerable<float> zs = data.Select(e => e.z);
 
-        float xMin = xs.Aggregate((a, b) => a < b ? a : b);
-        float yMin = ys.Aggregate((a, b) => a < b ? a : b);
-		float zMin = Mathf.Floor(zs.Aggregate((a, b) => a < b ? a : b));
+		float xMin = xs.Aggregate((a, b) => a < b ? a : b);
+		float yMin = ys.Aggregate((a, b) => a < b ? a : b);
+		float zMin = zs.Aggregate((a, b) => a < b ? a : b);
+		float xMax = xs.Aggregate((a, b) => a > b ? a : b);
+		float yMax = ys.Aggregate((a, b) => a > b ? a : b);
+		float zMax = zs.Aggregate((a, b) => a > b ? a : b);
 
-        float xMax = xs.Aggregate((a, b) => a > b ? a : b);
-        float yMax = ys.Aggregate((a, b) => a > b ? a : b);
-
+		// update global variables for later use
+		xRange = xMax - xMin;
+		yRange = yMax - yMin;
+		zRange = zMax - zMin;
+		minZ = Mathf.Floor(zMin);
         meanX = Mathf.Floor((xMin + xMax) / 2);
         meanY = Mathf.Floor((yMin + yMax) / 2);
 
-        return data.Select(p => new Vector3(p.x - meanX, p.y - meanY, p.z - zMin)).ToList();
+        return data.Select(p => new Vector3(p.x - meanX, p.y - meanY, p.z - minZ)).ToList();
     }
 
     // Writes out points to an .obj file
@@ -207,11 +216,6 @@ public class ObjDEM : ScriptableObject {
                 }
                 
             }
-            
-            int a = points.Count - 1;
-            int b = points.Count - 2;
-            int c = points.Count - 3;
-            int d = points.Count - 4;
 
             // write facets
             // don't compute for 0,0 or width,height
@@ -234,89 +238,117 @@ public class ObjDEM : ScriptableObject {
     // returns the long/lat of the centroid of the object
     public static Vector2 FindCentroidOfObj(string filename, string zone)
     {
-        return new Vector2(0, 0);
+		if (!filename.EndsWith(".obj")) throw new Exception("ObjDEMError: File must be of type .obj");
+
+		string line;
+		List<Vector3> xyzPoints = new List<Vector3>();
+
+		StreamReader file = new StreamReader(Application.dataPath + "/" + filename);
+
+		// read lines matching "v x y z" and turn that into a Vector3, which is put in xyzPoints
+		while ((line = file.ReadLine()) != null) {
+
+			if (line.StartsWith("v ")) {
+				line = line.Substring (line.IndexOf ("v ") + 2);
+				line = line.Trim();
+				string[] point = line.Split(new char[] {' '});
+				xyzPoints.Add(new Vector3(float.Parse(point[0]), float.Parse(point[1]), float.Parse(point[2])));
+			}
+		}
+
+		IEnumerable<float> xs = xyzPoints.Select(e => e.x);
+		IEnumerable<float> ys = xyzPoints.Select(e => e.y);
+
+		float xMin = xs.Aggregate((a, b) => a < b ? a : b);
+		float yMin = ys.Aggregate((a, b) => a < b ? a : b);
+		float xMax = xs.Aggregate((a, b) => a > b ? a : b);
+		float yMax = ys.Aggregate((a, b) => a > b ? a : b);
+
+		float centerX = (xMax + xMin) / 2;
+		float centerY = (yMax + yMin) / 2;
+
+		return Helpers.UTMToLatLon (centerX, centerY, zone);
     }
-
-    /*
-
-def find_centroid_from_obj(file, zone_number, zone_letter):
-    xyz = []
-
-    with open(file) as f:
-        lines = f.readlines()
-        for line in lines:
-            if line.find("v ") == 0:
-                content = line.strip('\n').strip('v').strip().split()
-                xyz.append(content)
-
-    xs = list(map(lambda x: float(x[0]), xyz))
-    ys = list(map(lambda x: float(x[1]), xyz))
-
-    centerX = max(xs) - ((max(xs) - min(xs)) / 2)
-    centerY = max(ys) - ((max(ys) - min(ys)) / 2)
-
-    centerLat, centerLong = utm.to_latlon(centerX, centerY, zone_number, zone_letter)
-
-    return (centerLong, centerLat)
-# end function
-*/
+		
     
-        public static void ScaleDownObj(string filename)
+    public static void ScaleDownObj(string filename, bool noModel)
     {
 
+		if (!filename.EndsWith(".obj")) throw new Exception("ObjDEMError: File must be of type .obj");
+			
+		string line;
+		List<double[]> xyzPoints = new List<double[]>();
+
+		StreamReader file = new StreamReader(Application.dataPath + "/" + filename);
+
+		// read lines matching "v x y z" and turn that into a Vector3, which is put in xyzPoints
+		while ((line = file.ReadLine()) != null) {
+		
+			if (line.StartsWith("v ")) {
+				line = line.Substring (line.IndexOf ("v ") + 2);
+				line = line.Trim();
+				string[] point = line.Split(new char[] {' '});
+				xyzPoints.Add (new double[] { double.Parse (point [0]), double.Parse (point [1]), double.Parse (point [2]) });
+			}
+		}
+
+		// if true: we have nothing to base the model off of, so find the meanX, meanY, and minZ values of this photogrammetry model
+		// otherwise: use the preexisting values from the landscape
+		if (noModel) {
+			IEnumerable<double> xs = xyzPoints.Select(e => e[0]);
+			IEnumerable<double> ys = xyzPoints.Select(e => e[1]);
+			IEnumerable<double> zs = xyzPoints.Select(e => e[2]);
+		
+			double xMin = xs.Aggregate((a, b) => a < b ? a : b);
+			double yMin = ys.Aggregate((a, b) => a < b ? a : b);
+			double zMin = zs.Aggregate((a, b) => a < b ? a : b);
+			double xMax = xs.Aggregate((a, b) => a > b ? a : b);
+			double yMax = ys.Aggregate((a, b) => a > b ? a : b);
+			double zMax = zs.Aggregate((a, b) => a > b ? a : b);
+
+			// update global variables for later use
+			xRange = (float)(xMax - xMin);
+			yRange = (float)(yMax - yMin);
+			zRange = (float)(zMax - zMin);
+			minZ = (float)Math.Floor(zMin);
+			meanX = (float)Math.Floor((xMin + xMax) / 2);
+			meanY = (float)Math.Floor((yMin + yMax) / 2);
+		}
+
+	
+		xyzPoints = xyzPoints.Select (p => new double[] { p [0] - meanX, p [1] - meanY, p [2] - minZ }).ToList ();
+
+		// return to the top of the file
+		file.DiscardBufferedData();
+		file.BaseStream.Seek(0, SeekOrigin.Begin);
+		Debug.Log (file.ReadLine ());
+
+		// copy the file to <filename>Scaled.obj, this time replacing the "v x y z" lines with the new, scaled values
+		string outfilename = filename.Substring(0, filename.IndexOf(".obj")) + "Scaled.obj";
+
+		File.Delete(Application.dataPath + "/" + outfilename);
+		File.Create(Application.dataPath + "/" + outfilename).Dispose();
+		StreamWriter outfile = new StreamWriter (Application.dataPath + "/" + outfilename);
+
+		int ln = 0;
+		string l;
+
+		while ((line = file.ReadLine()) != null) {
+
+			if (line.StartsWith ("v ")) {
+				l = "v " + xyzPoints [ln][0].ToString () + " " + xyzPoints [ln][1].ToString () + " " + xyzPoints [ln][2].ToString ();
+				outfile.WriteLine (l);
+				ln++;
+			} else {
+				outfile.WriteLine (line);
+			}
+		}
+
+		file.Close ();
+		outfile.Close ();
+
     }
-        /*
 
-def scale_down_obj(file, noModel=False):
-
-    global mean_x
-    global mean_y
-    global min_z
-
-    try:
-        i = file.index(".obj")
-    except ValueError:
-        print("Filename must end in .obj")
-        return
-
-    outfile = file[0:i]
-    fo = open(outfile + "Scaled.obj", "w")
-
-    xyz_points = []
-
-    f = open(file, "r")
-    lines = f.readlines()
-
-    for line in lines:
-        if line.find("v ") == 0:
-            line = line.strip('\n').strip('v').strip().split()
-            xyz_points.append([float(line[0]), float(line[1]), float(line[2])])
-
-    if noModel:
-        xs = list(map(lambda e: e[0], xyz_points))
-        ys = list(map(lambda e: e[1], xyz_points))
-        zs = list(map(lambda e: e[2], xyz_points))
-
-        mean_x = math.floor((min(xs) + max(xs)) / 2)
-        mean_y = math.floor((min(ys) + max(ys)) / 2)
-        min_z = math.floor(min(zs))
-
-    xyz_points = list(map(lambda e: [e[0] - mean_x, e[1] - mean_y, e[2] - min_z], xyz_points))
-
-    f.seek(0)
-    p = 0
-    for line in lines:
-        if line.find("v ") == 0:
-            line = "v " + str(xyz_points[p][0]) + " " + str(xyz_points[p][1]) + " " + str(xyz_points[p][2]) + "\n"
-            fo.write(line)
-            p += 1
-        else:
-            fo.write(line)
-# end function
-
-
-
-        */
 
     public void MakeLandscape(float minLong, float maxLong, float minLat, float maxLat, float resolution, string modelFilename, string imageFilename)
     {
@@ -325,15 +357,16 @@ def scale_down_obj(file, noModel=False):
         WritePointsToObj(minLong, maxLong, minLat, maxLat, resolution, modelFilename);
     }
 
+
     public void ConvertPhotogrammetryModel(string photogrammetryFilename)
     {
-        ScaleDownObj(photogrammetryFilename);
+        ScaleDownObj(photogrammetryFilename, true);
     }
+
 
     public void LandscapePhotogrammetryModel(float longRange, float latRange, float resolution, string zone, string photogrammetryFilename, string modelFilename, string imageFilename)
     {
-        //print("    Finding centroid...")
-
+		
         Vector2 centroid = FindCentroidOfObj(photogrammetryFilename, zone);
         float lon = centroid.x;
         float lat = centroid.y;
@@ -345,17 +378,6 @@ def scale_down_obj(file, noModel=False):
         FetchElevationData(minLong, maxLong, minLat, maxLat, resolution);
         FetchImageData(minLong, maxLong, minLat, maxLat, resolution, imageFilename);
         WritePointsToObj(minLong, maxLong, minLat, maxLat, resolution, modelFilename);
-        ScaleDownObj(photogrammetryFilename);
+        ScaleDownObj(photogrammetryFilename, false);
     }
-
-    // Use this for initialization
-    void Start () {
-        
-	}
-	
-	// Update is called once per frame
-	void Update () {
-		
-	}
-    
 }
