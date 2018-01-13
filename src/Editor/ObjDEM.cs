@@ -92,7 +92,7 @@ public class ObjDEM : ScriptableObject {
         WWW res = new WWW(req);
         yield return res;
 
-        File.WriteAllBytes(outfile, res.bytes);
+        File.WriteAllBytes(Application.dataPath + "/" + outfile, res.bytes);
         AssetDatabase.Refresh();
     }
 

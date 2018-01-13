@@ -17,11 +17,6 @@ class MakeLandscape : EditorWindow
     string warning = "Use a coordinate range between 0.01 and 1.";
     string done = "Generate";
 
-    public string arguments()
-    {
-        return minLong + " " + minLat + " " + maxLong + " " + maxLat + " " + resolution.ToString("R") + " " + modelName + " " + mapName;
-    }
-
     [MenuItem("Tools/Make Elevation Model from Range")]
     public static void ShowWindow()
     {
@@ -50,12 +45,8 @@ class MakeLandscape : EditorWindow
 
             UnityEngine.Debug.Log("Generating...");
 
-            Process p = new Process();
-
-            string args = arguments();
-
             ObjDEM objdem = CreateInstance("ObjDEM") as ObjDEM;
-            objdem.MakeLandscape(float.Parse(minLong), float.Parse(maxLong), float.Parse(minLat), float.Parse(maxLat), resolution, modelName, mapName);
+			objdem.MakeLandscape (float.Parse(minLong), float.Parse(maxLong), float.Parse(minLat), float.Parse(maxLat), resolution, modelName, mapName);
 
 			AssetDatabase.Refresh ();
 
