@@ -11,7 +11,6 @@ class LandscapePhotogrammetryModel : EditorWindow
     string longRange = "0.05";
     string latRange = "0.05";
     bool groupEnabled;
-    float resolution = 90.0f;
     string zone = "17N";
     public static string modelName = "photogrammetry_landscape.obj";
     public static string mapName = "photogrammetry_landscape_texture.tiff";
@@ -35,7 +34,6 @@ class LandscapePhotogrammetryModel : EditorWindow
         zone = EditorGUILayout.TextField("Zone", zone);
 
         groupEnabled = EditorGUILayout.BeginToggleGroup("Optional Settings", groupEnabled);
-        resolution = EditorGUILayout.Slider("Resolution (m)", resolution, 30, 90);
         modelName = EditorGUILayout.TextField("Model Filename", modelName);
         mapName = EditorGUILayout.TextField("Map Filename", mapName);
         EditorGUILayout.EndToggleGroup();
@@ -49,9 +47,9 @@ class LandscapePhotogrammetryModel : EditorWindow
             UnityEngine.Debug.Log("Generating...");
 
 			ObjDEM objdem = CreateInstance("ObjDEM") as ObjDEM;
-			objdem.LandscapePhotogrammetryModel (float.Parse (longRange), float.Parse (latRange), resolution, zone, photogrammetryModelName, modelName, mapName);
+			objdem.LandscapePhotogrammetryModel (float.Parse (longRange), float.Parse (latRange), zone, photogrammetryModelName, modelName, mapName);
 
-            AssetDatabase.Refresh();
+			AssetDatabase.Refresh ();
 
             UnityEngine.Debug.Log("Finished Generating.  Importing...");
         }

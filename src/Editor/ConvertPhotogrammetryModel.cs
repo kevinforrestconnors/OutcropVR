@@ -36,7 +36,7 @@ class ConvertPhotogrammetryModel : EditorWindow
 			ObjDEM objdem = CreateInstance("ObjDEM") as ObjDEM;
 			objdem.ConvertPhotogrammetryModel (photogrammetryModelName);
 
-            AssetDatabase.Refresh();
+			AssetDatabase.Refresh ();
 
             UnityEngine.Debug.Log("Finished Converting.  Importing...");
 

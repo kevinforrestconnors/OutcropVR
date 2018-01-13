@@ -11,15 +11,17 @@ public class ObjDEM : ScriptableObject {
 
     private static string database = "https://data.worldwind.arc.nasa.gov";
     private static float meterPerDegreeLat = 111619.0f;
+	private static float resolution = 90.0f;
+	private static float resolutionInDeg = resolution / meterPerDegreeLat;
 
     private static List<int> elevationData = new List<int>();
     private static int[,] ElevationData;
-    private static float meanX = 0.0f;
-    private static float meanY = 0.0f;
-    private static float minZ = 0.0f;
-	private static float xRange = 0.0f;
-	private static float yRange = 0.0f;
-	private static float zRange = 0.0f;
+	public static float meanX = 0.0f;
+	public static float meanY = 0.0f;
+	public static float minZ = 0.0f;
+	public static float xRange = 0.0f;
+	public static float yRange = 0.0f;
+	public static float zRange = 0.0f;
 
     private IEnumerator WWWElevationData(string req, int width, int height)
     {
@@ -53,14 +55,8 @@ public class ObjDEM : ScriptableObject {
     }
     
     // Fetches elevation data from data.worldwind.arc.nasa.gov
-    private void FetchElevationData(float minLong, float maxLong, float minLat, float maxLat, float resolution)
+    private void FetchElevationData(float minLong, float maxLong, float minLat, float maxLat)
     {
-        if (resolution < 30)
-        {
-            resolution = 30;
-        }
-
-        float resolutionInDeg = resolution / meterPerDegreeLat;
         
         float longRange = maxLong - minLong;
         float latRange = maxLat - minLat;
@@ -97,20 +93,13 @@ public class ObjDEM : ScriptableObject {
     }
 
     // Fetches an image from data.worldwind.arc.nasa.gov
-    private void FetchImageData(float minLong, float maxLong, float minLat, float maxLat, float resolution, string filename)
+    private void FetchImageData(float minLong, float maxLong, float minLat, float maxLat, string filename)
     {
 
         if (minLat < -60.0 || maxLat > 84.0)
         {
             throw new Exception("FetchImageDataError: Landsat data is not available for values of latitude outside of the range -60.0 to 84.0");
         }
-
-        if (resolution < 30)
-        {
-            resolution = 30;
-        }
-
-        float resolutionInDeg = resolution / meterPerDegreeLat;
 
         float longRange = maxLong - minLong;
         float latRange = maxLat - minLat;
@@ -132,9 +121,8 @@ public class ObjDEM : ScriptableObject {
     }
     
     // converts ElevationData to a Vector3[]
-    private List<Vector3> ElevationPointsToXYZ(float minLong, float maxLong, float minLat, float maxLat, float resolution)
+    private List<Vector3> ElevationPointsToXYZ(float minLong, float maxLong, float minLat, float maxLat)
     {
-        float resolutionInDeg = resolution / meterPerDegreeLat;
 
         List<Vector3> data = new List<Vector3>();
 
@@ -176,13 +164,13 @@ public class ObjDEM : ScriptableObject {
 
     // Writes out points to an .obj file
     // Precondition: FetchElevationData has been called
-    private void WritePointsToObj(float minLong, float maxLong, float minLat, float maxLat, float resolution, string filename)
+    private void WritePointsToObj(float minLong, float maxLong, float minLat, float maxLat, string filename)
     {
         string fp = Application.dataPath + "/" + filename;
         File.Delete(fp);
         File.Create(fp).Dispose();
 
-        List<Vector3> points = ElevationPointsToXYZ(minLong, maxLong, minLat, maxLat, resolution);
+        List<Vector3> points = ElevationPointsToXYZ(minLong, maxLong, minLat, maxLat);
 
 		float[,] xyPoints = new float[points.Count, 2];
 
@@ -271,7 +259,7 @@ public class ObjDEM : ScriptableObject {
     }
 		
     
-    public static void ScaleDownObj(string filename, bool noModel)
+    public static void ScaleDownObj(string filename)
     {
 
 		if (!filename.EndsWith(".obj")) throw new Exception("ObjDEMError: File must be of type .obj");
@@ -291,29 +279,25 @@ public class ObjDEM : ScriptableObject {
 				xyzPoints.Add (new double[] { double.Parse (point [0]), double.Parse (point [1]), double.Parse (point [2]) });
 			}
 		}
+	
+		IEnumerable<double> xs = xyzPoints.Select(e => e[0]);
+		IEnumerable<double> ys = xyzPoints.Select(e => e[1]);
+		IEnumerable<double> zs = xyzPoints.Select(e => e[2]);
+	
+		double xMin = xs.Aggregate((a, b) => a < b ? a : b);
+		double yMin = ys.Aggregate((a, b) => a < b ? a : b);
+		double zMin = zs.Aggregate((a, b) => a < b ? a : b);
+		double xMax = xs.Aggregate((a, b) => a > b ? a : b);
+		double yMax = ys.Aggregate((a, b) => a > b ? a : b);
+		double zMax = zs.Aggregate((a, b) => a > b ? a : b);
 
-		// if true: we have nothing to base the model off of, so find the meanX, meanY, and minZ values of this photogrammetry model
-		// otherwise: use the preexisting values from the landscape
-		if (noModel) {
-			IEnumerable<double> xs = xyzPoints.Select(e => e[0]);
-			IEnumerable<double> ys = xyzPoints.Select(e => e[1]);
-			IEnumerable<double> zs = xyzPoints.Select(e => e[2]);
-		
-			double xMin = xs.Aggregate((a, b) => a < b ? a : b);
-			double yMin = ys.Aggregate((a, b) => a < b ? a : b);
-			double zMin = zs.Aggregate((a, b) => a < b ? a : b);
-			double xMax = xs.Aggregate((a, b) => a > b ? a : b);
-			double yMax = ys.Aggregate((a, b) => a > b ? a : b);
-			double zMax = zs.Aggregate((a, b) => a > b ? a : b);
-
-			// update global variables for later use
-			xRange = (float)(xMax - xMin);
-			yRange = (float)(yMax - yMin);
-			zRange = (float)(zMax - zMin);
-			minZ = (float)Math.Floor(zMin);
-			meanX = (float)Math.Floor((xMin + xMax) / 2);
-			meanY = (float)Math.Floor((yMin + yMax) / 2);
-		}
+		// update global variables for later use
+		xRange = (float)(xMax - xMin);
+		yRange = (float)(yMax - yMin);
+		zRange = (float)(zMax - zMin);
+		minZ = (float)Math.Floor(zMin);
+		meanX = (float)Math.Floor((xMin + xMax) / 2);
+		meanY = (float)Math.Floor((yMin + yMax) / 2);
 
 	
 		xyzPoints = xyzPoints.Select (p => new double[] { p [0] - meanX, p [1] - meanY, p [2] - minZ }).ToList ();
@@ -321,7 +305,6 @@ public class ObjDEM : ScriptableObject {
 		// return to the top of the file
 		file.DiscardBufferedData();
 		file.BaseStream.Seek(0, SeekOrigin.Begin);
-		Debug.Log (file.ReadLine ());
 
 		// copy the file to <filename>Scaled.obj, this time replacing the "v x y z" lines with the new, scaled values
 		string outfilename = filename.Substring(0, filename.IndexOf(".obj")) + "Scaled.obj";
@@ -350,21 +333,21 @@ public class ObjDEM : ScriptableObject {
     }
 
 
-    public void MakeLandscape(float minLong, float maxLong, float minLat, float maxLat, float resolution, string modelFilename, string imageFilename)
+    public void MakeLandscape(float minLong, float maxLong, float minLat, float maxLat, string modelFilename, string imageFilename)
     {
-		FetchImageData(minLong, maxLong, minLat, maxLat, resolution, imageFilename);
-		FetchElevationData(minLong, maxLong, minLat, maxLat, resolution);    
-        WritePointsToObj(minLong, maxLong, minLat, maxLat, resolution, modelFilename);
+		FetchImageData(minLong, maxLong, minLat, maxLat, imageFilename);
+		FetchElevationData(minLong, maxLong, minLat, maxLat);    
+        WritePointsToObj(minLong, maxLong, minLat, maxLat, modelFilename);
     }
 
 
     public void ConvertPhotogrammetryModel(string photogrammetryFilename)
     {
-        ScaleDownObj(photogrammetryFilename, true);
+        ScaleDownObj(photogrammetryFilename);
     }
 
 
-    public void LandscapePhotogrammetryModel(float longRange, float latRange, float resolution, string zone, string photogrammetryFilename, string modelFilename, string imageFilename)
+    public void LandscapePhotogrammetryModel(float longRange, float latRange, string zone, string photogrammetryFilename, string modelFilename, string imageFilename)
     {
 		
         Vector2 centroid = FindCentroidOfObj(photogrammetryFilename, zone);
@@ -375,9 +358,11 @@ public class ObjDEM : ScriptableObject {
         float minLat = lat - latRange / 2;
         float maxLat = lat + latRange / 2;
 
-        FetchElevationData(minLong, maxLong, minLat, maxLat, resolution);
-        FetchImageData(minLong, maxLong, minLat, maxLat, resolution, imageFilename);
-        WritePointsToObj(minLong, maxLong, minLat, maxLat, resolution, modelFilename);
-        ScaleDownObj(photogrammetryFilename, false);
+
+
+        FetchElevationData(minLong, maxLong, minLat, maxLat);
+        FetchImageData(minLong, maxLong, minLat, maxLat, imageFilename);
+        WritePointsToObj(minLong, maxLong, minLat, maxLat, modelFilename);
+        ScaleDownObj(photogrammetryFilename);
     }
 }
