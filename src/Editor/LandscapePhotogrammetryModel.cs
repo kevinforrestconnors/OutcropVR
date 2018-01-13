@@ -11,18 +11,11 @@ class LandscapePhotogrammetryModel : EditorWindow
     string longRange = "0.05";
     string latRange = "0.05";
     bool groupEnabled;
-    float resolution = 90.0f;
-    string zoneNumber = "17";
-    string zoneLetter = "N";
+    string zone = "17N";
     public static string modelName = "photogrammetry_landscape.obj";
     public static string mapName = "photogrammetry_landscape_texture.tiff";
     string warning = "Use a coordinate range between 0.01 and 1.";
     string done = "Generate";
-
-    public string arguments()
-    {
-        return "landscapePhotogrammetry " + longRange + " " + latRange + " " + resolution.ToString("R") + " " + zoneNumber + " " + zoneLetter + " " + photogrammetryModelName + " " + modelName + " " + mapName;
-    }
 
     [MenuItem("Tools/Make Elevation Model Around Photogrammetry Model")]
     public static void ShowWindow()
@@ -38,11 +31,9 @@ class LandscapePhotogrammetryModel : EditorWindow
         textureName = EditorGUILayout.TextField("Photogrammetry Texture: ", textureName);
         longRange = EditorGUILayout.TextField("Longitude Range", longRange);
         latRange = EditorGUILayout.TextField("Latitude Range", latRange);
-        zoneNumber = EditorGUILayout.TextField("Zone Number", zoneNumber);
-        zoneLetter = EditorGUILayout.TextField("Zone Letter", zoneLetter);
+        zone = EditorGUILayout.TextField("Zone", zone);
 
         groupEnabled = EditorGUILayout.BeginToggleGroup("Optional Settings", groupEnabled);
-        resolution = EditorGUILayout.Slider("Resolution (m)", resolution, 30, 90);
         modelName = EditorGUILayout.TextField("Model Filename", modelName);
         mapName = EditorGUILayout.TextField("Map Filename", mapName);
         EditorGUILayout.EndToggleGroup();
@@ -55,27 +46,10 @@ class LandscapePhotogrammetryModel : EditorWindow
 
             UnityEngine.Debug.Log("Generating...");
 
-            Process p = new Process();
+			ObjDEM objdem = CreateInstance("ObjDEM") as ObjDEM;
+			objdem.LandscapePhotogrammetryModel (float.Parse (longRange), float.Parse (latRange), zone, photogrammetryModelName, modelName, mapName);
 
-            string args = arguments();
-
-            p.StartInfo = new ProcessStartInfo(args)
-            {
-                FileName = "C:/Program Files/Python36/python.exe",
-                Arguments = Application.dataPath + "/PythonScripts/objdem.py " + args,
-                UseShellExecute = true,
-                RedirectStandardOutput = false,
-                RedirectStandardInput = false,
-                RedirectStandardError = false,
-                WorkingDirectory = Application.dataPath
-            };
-
-            p.Start();
-
-            p.WaitForExit();
-            p.Close();
-
-            AssetDatabase.Refresh();
+			AssetDatabase.Refresh ();
 
             UnityEngine.Debug.Log("Finished Generating.  Importing...");
         }

@@ -33,27 +33,10 @@ class ConvertPhotogrammetryModel : EditorWindow
 
             UnityEngine.Debug.Log("Converting...");
 
-            Process p = new Process();
+			ObjDEM objdem = CreateInstance("ObjDEM") as ObjDEM;
+			objdem.ConvertPhotogrammetryModel (photogrammetryModelName);
 
-            string args = arguments();
-
-            p.StartInfo = new ProcessStartInfo(args)
-            {
-                FileName = "C:/Program Files/Python36/python.exe",
-                Arguments = Application.dataPath + "/PythonScripts/objdem.py " + args,
-                UseShellExecute = true,
-                RedirectStandardOutput = false,
-                RedirectStandardInput = false,
-                RedirectStandardError = false,
-                WorkingDirectory = Application.dataPath
-            };
-
-            p.Start();
-
-            p.WaitForExit();
-            p.Close();
-
-            AssetDatabase.Refresh();
+			AssetDatabase.Refresh ();
 
             UnityEngine.Debug.Log("Finished Converting.  Importing...");
 

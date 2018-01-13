@@ -1,22 +1,37 @@
 ﻿using UnityEngine;
 using UnityEditor;
+using System;
 using System.Collections;
 
 public class OnImport : AssetPostprocessor
 {
     void OnPostprocessModel(GameObject g)
     {
-        // Get the object name from the filename.  e.g. /Assets/PhotogrammetryModels/Rocas_100K.obj -> Rocas_100K
-        string landscapeModel = MakeLandscape.modelName.Substring(MakeLandscape.modelName.LastIndexOf("/") + 1, MakeLandscape.modelName.IndexOf("."));
-        string landscapeModel2 = LandscapePhotogrammetryModel.modelName.Substring(LandscapePhotogrammetryModel.modelName.LastIndexOf("/") + 1, LandscapePhotogrammetryModel.modelName.IndexOf("."));
-        string photogrammetryModel = ConvertPhotogrammetryModel.photogrammetryModelName.Substring(ConvertPhotogrammetryModel.photogrammetryModelName.LastIndexOf("/") + 1, ConvertPhotogrammetryModel.photogrammetryModelName.IndexOf("."));
-        string photogrammetryModel2 = LandscapePhotogrammetryModel.photogrammetryModelName.Substring(LandscapePhotogrammetryModel.photogrammetryModelName.LastIndexOf("/") + 1, LandscapePhotogrammetryModel.photogrammetryModelName.IndexOf("."));
+
+		// Get the object name from the filename.  e.g. /PhotogrammetryModels/Rocas_100K.obj -> Rocas_100K
+		int land1sp = MakeLandscape.modelName.LastIndexOf ("/") + 1;
+		int land2sp = LandscapePhotogrammetryModel.modelName.LastIndexOf ("/") + 1;
+		int photogrammetry1sp = ConvertPhotogrammetryModel.photogrammetryModelName.LastIndexOf ("/") + 1;
+		int photogrammetry2sp = LandscapePhotogrammetryModel.photogrammetryModelName.LastIndexOf ("/") + 1;
+
+		string landscapeModel, landscapeModel2, photogrammetryModel, photogrammetryModel2;
+
+		try {
+			landscapeModel = MakeLandscape.modelName.Substring(land1sp, MakeLandscape.modelName.IndexOf(".") - land1sp);
+			landscapeModel2 = LandscapePhotogrammetryModel.modelName.Substring(land2sp, LandscapePhotogrammetryModel.modelName.IndexOf(".") - land2sp);
+			photogrammetryModel = ConvertPhotogrammetryModel.photogrammetryModelName.Substring(photogrammetry1sp, ConvertPhotogrammetryModel.photogrammetryModelName.IndexOf(".") - photogrammetry1sp);
+			photogrammetryModel2 = LandscapePhotogrammetryModel.photogrammetryModelName.Substring(photogrammetry2sp, LandscapePhotogrammetryModel.photogrammetryModelName.IndexOf(".") - photogrammetry2sp);
+		} catch (ArgumentOutOfRangeException) {
+			throw new Exception ("OnImportError: Invalid model name.");
+		}
+
 
         if (g.name.Equals(landscapeModel))
         {
             RotateModel(g);
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, MakeLandscape.mapName);
+            g.tag = "Landscape";
         }
 
         if (g.name.Equals(landscapeModel2))
@@ -24,6 +39,7 @@ public class OnImport : AssetPostprocessor
             RotateModel(g);
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, LandscapePhotogrammetryModel.mapName);
+            g.tag = "Landscape";
         }
 
         if (g.name.Equals(photogrammetryModel + "Scaled"))
@@ -31,6 +47,12 @@ public class OnImport : AssetPostprocessor
             RotateModel(g);
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, ConvertPhotogrammetryModel.textureName);
+            g.tag = "Photogrammetry Model";
+			PhotogrammetryModelProperties pps = g.AddComponent<PhotogrammetryModelProperties> () as PhotogrammetryModelProperties;
+			pps.SetName (g.name);
+			pps.SetRange (ObjDEM.xRange, ObjDEM.yRange, ObjDEM.zRange);
+			pps.SetScaleFactor (ObjDEM.meanX, ObjDEM.meanY, ObjDEM.minZ);
+			pps.WriteSDTPItemsToFile ();
         } 
 
         if (g.name.Equals(photogrammetryModel2 + "Scaled"))
@@ -38,6 +60,12 @@ public class OnImport : AssetPostprocessor
             RotateModel(g);
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, LandscapePhotogrammetryModel.textureName);
+            g.tag = "Photogrammetry Model";
+			PhotogrammetryModelProperties pps = g.AddComponent<PhotogrammetryModelProperties> () as PhotogrammetryModelProperties;
+			pps.SetName (g.name);
+			pps.SetRange (ObjDEM.xRange, ObjDEM.yRange, ObjDEM.zRange);
+			pps.SetScaleFactor (ObjDEM.meanX, ObjDEM.meanY, ObjDEM.minZ);
+			pps.WriteSDTPItemsToFile ();
         }
     }
 
@@ -82,8 +110,15 @@ public class OnImport : AssetPostprocessor
         Material landscapeMaterial = new Material(Shader.Find("Standard"));
         Texture landscapeTex = (Texture)AssetDatabase.LoadAssetAtPath("Assets/" + textureName, typeof(Texture));
         landscapeMaterial.mainTexture = landscapeTex;
-        UnityEngine.Debug.Log(textureName);
-        AssetDatabase.CreateAsset(landscapeMaterial, "Assets/Materials/" + textureName.Substring(textureName.LastIndexOf("/") + 1, textureName.IndexOf("."))  + ".mat");
+		int startPos = textureName.LastIndexOf ("/") + 1;
+		int elems = textureName.LastIndexOf (".") - startPos;
+
+		try {
+			AssetDatabase.CreateAsset(landscapeMaterial, "Assets/Materials/" + textureName.Substring(startPos, elems)  + ".mat");
+		} catch (ArgumentOutOfRangeException) {
+			throw new Exception ("OnImportError: Invalid texture name.");
+		}
+
         AssetDatabase.Refresh();
 
         Transform hasChildren;
