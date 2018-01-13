@@ -1,26 +1,35 @@
-﻿using System.Collections;
+﻿using System.IO;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class PhotogrammetryModelProperties : MonoBehaviour {
 
+	private string modelName;
+
     private float UTMxCoordinate;
     private float UTMyCoordinate;
 
-    private float xRange;
-    private float yRange;
-    private float zRange;
+	public float meanX;
+	public float meanY;
+	public float minZ;
 
-    private struct SDTPItem
+	public float xRange;
+	public float yRange;
+	public float zRange;
+
+	public List<SDTPItem> items;
+
+    public struct SDTPItem
     {
         private float x;
         private float y;
         private float z;
-        private string strikeOrTrend;
-        private string dipOrPlunge;
+        private float strikeOrTrend;
+        private float dipOrPlunge;
         private string type;
 
-        public SDTPItem(float x, float y, float z, string st, string dp, string t)
+        public SDTPItem(float x, float y, float z, float st, float dp, string t)
         {
             this.x = x;
             this.y = y;
@@ -36,6 +45,8 @@ public class PhotogrammetryModelProperties : MonoBehaviour {
             string xs = x.ToString();
             string ys = y.ToString();
             string zs = z.ToString();
+			string sts = strikeOrTrend.ToString ();
+			string dps = dipOrPlunge.ToString ();
 
             if (xs.IndexOf(".") > 0)
             {
@@ -49,26 +60,46 @@ public class PhotogrammetryModelProperties : MonoBehaviour {
             {
                 zs = zs.Substring(0, zs.IndexOf(".") + 2);
             }
-            return xs + "," + ys + "," + zs + "," + strikeOrTrend + "," + dipOrPlunge + "," + type;
+			if (sts.IndexOf(".") > 0)
+			{
+				sts = sts.Substring(0, sts.IndexOf(".") + 2);
+			}
+			if (dps.IndexOf(".") > 0)
+			{
+				dps = dps.Substring(0, dps.IndexOf(".") + 2);
+			}
+			return xs + "," + ys + "," + zs + "," + sts + "," + dps + "," + type;
         }
-    }
+	}
 
-    private List<SDTPItem> items;
-
-    public void AddSDTPItem(float x, float y, float z, string st, string dp, string t)
+    public void AddSDTPItem(float x, float y, float z, float st, float dp, string t)
     {
+		if (items == null) {
+			items = new List<SDTPItem>();
+		}
         items.Add(new SDTPItem(x, y, z, st, dp, t));
+		WriteSDTPItemsToFile ();
     }
 
     public void WriteSDTPItemsToFile()
     {
-        string[] lines = new string[items.Count];
-        for (int i = 0; i < items.Count; i++)
+        string[] lines = new string[items.Count + 3];
+
+		lines [0] = "# Photogrammetry Model: " + modelName;
+		lines [1] = "# Scale factor: " + meanX + " " + meanY + " " + minZ;
+		lines [2] = " ";
+
+        for (int i = 3; i < items.Count + 3; i++)
         {
-            lines[i] = items[i].ToString();
+            lines[i] = items[i - 3].ToString();
         }
-        System.IO.File.WriteAllLines(Application.dataPath + "/SDTPData.txt", lines);
+		Debug.Log (lines[3]);
+		File.WriteAllLines(Application.dataPath + "/SDTPData" + name + ".txt", lines);
     }
+
+	public void SetName(string s) {
+		modelName = s;
+	}
 
     public void SetRange(float x, float y, float z)
     {
@@ -82,13 +113,15 @@ public class PhotogrammetryModelProperties : MonoBehaviour {
         return new Vector3(xRange, yRange, zRange);
     }
 
-    // Use this for initialization
-    void Start () {
-        items = new List<SDTPItem>();
-    }
-	
-	// Update is called once per frame
-	void Update () {
-		
+	public void SetScaleFactor(float x, float y, float z)
+	{
+		meanX = x;
+		meanY = y;
+		minZ = z;
+	}
+
+	public Vector3 GetScaleFactor()
+	{
+		return new Vector3(meanX, meanY, minZ);
 	}
 }

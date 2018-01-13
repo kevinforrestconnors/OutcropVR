@@ -13,13 +13,15 @@ public class LaserPointer : MonoBehaviour {
     public GameObject greenLaserPrefab;
     public GameObject yellowLaserPrefab;
 
+	private static GameObject lastGeoModelHit;
+
     private static GameObject redLaser;
     private static GameObject greenLaser;
     private static GameObject yellowLaser;
     private static GameObject laser;
     private Vector3 hitPoint;
 
-    private enum Mode { LaserPointer, MakingLine, MakingPlane, MakingSurface, Paused };
+    private enum Mode { LaserPointer, MakingLine, MakingPlane, MakingSurface, Paused, Saving, Deleting };
     private static Mode previousMode;
     private static Mode currentMode = Mode.LaserPointer;
 
@@ -44,40 +46,17 @@ public class LaserPointer : MonoBehaviour {
         {
             g = GameObject.Find(Config.photogrammetryModelName);
         }
+			
+		PhotogrammetryModelProperties pps = g.GetComponent<PhotogrammetryModelProperties> () as PhotogrammetryModelProperties;
+		Vector3 modelSize = pps.GetRange ();
 
-        Vector3 modelSize = new Vector3(0, 0, 0);
+		float modelLength = Mathf.Sqrt (modelSize.x * modelSize.x + modelSize.y * modelSize.y + modelSize.z * modelSize.z);
 
-        Transform def = g.transform.GetChild(0);
-
-        Transform hasChildren;
-        try
-        {
-            hasChildren = def.GetChild(0);
-        }
-        catch
-        {
-            hasChildren = null;
-        }
-
-        if (!hasChildren)
-        {
-            modelSize = def.gameObject.GetComponent<Renderer>().bounds.size;
-        }
-        else
-        {
-            foreach (Transform meshPart in def)
-            {
-                modelSize += meshPart.gameObject.GetComponent<Renderer>().bounds.size;
-            }
-        }
-
-        float modelVolume = modelSize.x * modelSize.y * modelSize.z;
-
-        if (modelVolume < 5e6)
+		if (modelLength < 50)
         {
             return Config.LineWidth.Small;
         }
-        else if (modelVolume < 75e6)
+		else if (modelLength < 750)
         {
             return Config.LineWidth.Medium;
         }
@@ -146,6 +125,7 @@ public class LaserPointer : MonoBehaviour {
                 }
                 else
                 {
+					lastGeoModelHit = hit.collider.gameObject;
                     GeoDisplay.SetInactive();
                 }
             }
@@ -199,34 +179,89 @@ public class LaserPointer : MonoBehaviour {
         laser = greenLaser;
     }
 
-    // Deletes a line, plane, or surface underneath the laser pointer
-    public static void Delete()
-    {
+	public static void Deleting() {
+		if (currentMode == Mode.LaserPointer) {
+			currentMode = Mode.Deleting;
+		}
+	}
 
+    // Deletes a line, plane, or surface underneath the laser pointer
+    public void Delete()
+    {
+		laser.SetActive(false);
+		RaycastHit hit = DoLaser ();
+		laser.SetActive(true);
+
+		if (hit.collider.gameObject.name == "OutcropVRPlane") {
+			Destroy (hit.collider.gameObject);
+		} else if (hit.collider.gameObject.name == "OutcropVRLine")
+		{
+			Destroy (hit.collider.gameObject);
+		}
     }
 
+	public static void Saving() {
+		if (currentMode == Mode.LaserPointer) {
+			currentMode = Mode.Saving;
+		}
+	}
+
     // Outputs a line, plane, or surface in the form X, Y, Z, Strike/Trend, Dip/Plunge, SD/TP, ID to Output Data/sdtpdata.txt
-    public static void Save()
+    public void Save()
     {
 
+		PhotogrammetryModelProperties pmps = lastGeoModelHit.transform.root.GetComponent<PhotogrammetryModelProperties> () as PhotogrammetryModelProperties;
+		if (pmps) {
+			laser.SetActive(false);
+			RaycastHit hit = DoLaser ();
+			laser.SetActive(true);
+
+			float localX = hit.collider.transform.position.x;
+			float localY = hit.collider.transform.position.y;
+			float localZ = hit.collider.transform.position.z;
+			Vector3 scaleFactor = pmps.GetScaleFactor ();
+
+			float UTMx = localX + scaleFactor.x;
+			float UTMy = localY + scaleFactor.y;
+			float UTMz = localZ + scaleFactor.z;
+
+			Debug.Log (hit.collider.gameObject.name);
+
+			if (hit.collider.gameObject.name == "OutcropVRPlane") {
+			
+				PlaneProperties pps = hit.collider.gameObject.GetComponent<PlaneProperties>() as PlaneProperties;
+				pmps.AddSDTPItem (UTMx, UTMy, UTMz, pps.GetStrike (), pps.GetDip (), "SD");
+
+			} else if (hit.collider.gameObject.name == "OutcropVRLine")
+			{
+				
+				LineProperties lps = hit.collider.gameObject.GetComponent<LineProperties>() as LineProperties;
+				pmps.AddSDTPItem (UTMx, UTMy, UTMz, lps.GetTrend (), lps.GetPlunge (), "TP");
+			}
+		}
     }
 
     // Update is called once per frame
     void Update () {
 
-        if (currentMode == Mode.LaserPointer || currentMode == Mode.Paused)
-        {
-            if (Controller.GetHairTrigger())
-            {
-                DoLaser();
-            }
-            else
-            {
-                laser.SetActive(false);
-                GeoDisplay.SetInactive();
-            }
-        }
-        else
+		if (currentMode == Mode.LaserPointer || currentMode == Mode.Paused) {
+			if (Controller.GetHairTrigger ()) {
+				DoLaser ();
+			} else {
+				laser.SetActive (false);
+				GeoDisplay.SetInactive ();
+			}
+		} else if (currentMode == Mode.Deleting) {
+
+			Delete ();
+			currentMode = Mode.LaserPointer;
+
+		} else if (currentMode == Mode.Saving) {
+		
+			Save ();
+			currentMode = Mode.LaserPointer;
+		
+		} else
         {
 
             if ((Controller.GetHairTrigger() || Controller.GetHairTriggerDown()) && currentMode != Mode.Paused)
@@ -237,7 +272,6 @@ public class LaserPointer : MonoBehaviour {
                 {
                     if (hit.collider.gameObject.name != "OutcropVRPlane" && hit.collider.gameObject.name != "OutcropVRLine")
                     {
-                        Debug.Log(hit.collider.gameObject.name);
                         surfacePoints.Add(hit.point);
                     }
 

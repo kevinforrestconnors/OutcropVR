@@ -25,20 +25,18 @@ public class FlyingMovement : MonoBehaviour {
             g = GameObject.Find(Config.photogrammetryModelName);
         }
 
-        //Vector3 modelSize = g.GetComponent<PhotogrammetryModelProperties>().GetRange();
+		PhotogrammetryModelProperties pps = g.GetComponent<PhotogrammetryModelProperties> () as PhotogrammetryModelProperties;
+		Vector3 modelSize = pps.GetRange ();
 
-        //float modelHypot = Mathf.Sqrt(modelSize.x * modelSize.x + modelSize.y * modelSize.y + modelSize.z * modelSize.z);
-        
-        double smallModelHypot = 1e5;
-        double modelHypot = smallModelHypot * 24.0;
+		float modelLength = Mathf.Sqrt (modelSize.x * modelSize.x + modelSize.y * modelSize.y + modelSize.z * modelSize.z);
 
-        if (modelHypot < smallModelHypot)
+		if (modelLength < 50)
         {
             return Config.Speed.Slow;
-        } else if (modelHypot < smallModelHypot * 5)
+		} else if (modelLength < 200)
         {
             return Config.Speed.Medium;
-        } else if (modelHypot < smallModelHypot * 25)
+		} else if (modelLength < 750)
         {
             return Config.Speed.Fast;
         } else

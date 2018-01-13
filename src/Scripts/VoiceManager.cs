@@ -67,10 +67,10 @@ public class VoiceManager : MonoBehaviour
         } 
         else if (args.text == "Delete")
         {
-            LaserPointer.Delete();
+            LaserPointer.Deleting();
         } else if (args.text == "Save")
         {
-            LaserPointer.Save();
+            LaserPointer.Saving();
         }
     }
 }
