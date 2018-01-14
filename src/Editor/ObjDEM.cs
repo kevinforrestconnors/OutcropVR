@@ -244,6 +244,8 @@ public class ObjDEM : ScriptableObject {
 			}
 		}
 
+		file.Close ();
+
 		IEnumerable<float> xs = xyzPoints.Select(e => e.x);
 		IEnumerable<float> ys = xyzPoints.Select(e => e.y);
 
@@ -311,6 +313,7 @@ public class ObjDEM : ScriptableObject {
 
 		File.Delete(Application.dataPath + "/" + outfilename);
 		File.Create(Application.dataPath + "/" + outfilename).Dispose();
+
 		StreamWriter outfile = new StreamWriter (Application.dataPath + "/" + outfilename);
 
 		int ln = 0;
@@ -344,6 +347,15 @@ public class ObjDEM : ScriptableObject {
     public void ConvertPhotogrammetryModel(string photogrammetryFilename)
     {
         ScaleDownObj(photogrammetryFilename);
+
+		SDTP.modelName = photogrammetryFilename;
+		SDTP.meanX = meanX;
+		SDTP.meanY = meanY;
+		SDTP.minZ = minZ;
+		SDTP.xRange = xRange;
+		SDTP.yRange = yRange;
+		SDTP.zRange = zRange;
+		SDTP.WriteSDTPItemsToFile ();
     }
 
 
@@ -364,5 +376,14 @@ public class ObjDEM : ScriptableObject {
         FetchImageData(minLong, maxLong, minLat, maxLat, imageFilename);
         WritePointsToObj(minLong, maxLong, minLat, maxLat, modelFilename);
         ScaleDownObj(photogrammetryFilename);
+
+		SDTP.modelName = photogrammetryFilename;
+		SDTP.meanX = meanX;
+		SDTP.meanY = meanY;
+		SDTP.minZ = minZ;
+		SDTP.xRange = xRange;
+		SDTP.yRange = yRange;
+		SDTP.zRange = zRange;
+		SDTP.WriteSDTPItemsToFile ();
     }
 }

@@ -48,11 +48,6 @@ public class OnImport : AssetPostprocessor
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, ConvertPhotogrammetryModel.textureName);
             g.tag = "Photogrammetry Model";
-			PhotogrammetryModelProperties pps = g.AddComponent<PhotogrammetryModelProperties> () as PhotogrammetryModelProperties;
-			pps.SetName (g.name);
-			pps.SetRange (ObjDEM.xRange, ObjDEM.yRange, ObjDEM.zRange);
-			pps.SetScaleFactor (ObjDEM.meanX, ObjDEM.meanY, ObjDEM.minZ);
-			pps.WriteSDTPItemsToFile ();
         } 
 
         if (g.name.Equals(photogrammetryModel2 + "Scaled"))
@@ -61,11 +56,6 @@ public class OnImport : AssetPostprocessor
             ApplyMeshColliderToMeshParts(g);
             MapTexturesToMeshParts(g, LandscapePhotogrammetryModel.textureName);
             g.tag = "Photogrammetry Model";
-			PhotogrammetryModelProperties pps = g.AddComponent<PhotogrammetryModelProperties> () as PhotogrammetryModelProperties;
-			pps.SetName (g.name);
-			pps.SetRange (ObjDEM.xRange, ObjDEM.yRange, ObjDEM.zRange);
-			pps.SetScaleFactor (ObjDEM.meanX, ObjDEM.meanY, ObjDEM.minZ);
-			pps.WriteSDTPItemsToFile ();
         }
     }
 

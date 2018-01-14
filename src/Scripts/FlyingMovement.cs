@@ -15,20 +15,7 @@ public class FlyingMovement : MonoBehaviour {
 
     private static Config.Speed CalculateSpeedBasedOnModelSize()
     {
-        GameObject g;
-
-        if (Config.photogrammetryModelName.Equals("undefined"))
-        {
-            g = GameObject.FindWithTag("Photogrammetry Model");
-        } else
-        {
-            g = GameObject.Find(Config.photogrammetryModelName);
-        }
-
-		PhotogrammetryModelProperties pps = g.GetComponent<PhotogrammetryModelProperties> () as PhotogrammetryModelProperties;
-		Vector3 modelSize = pps.GetRange ();
-
-		float modelLength = Mathf.Sqrt (modelSize.x * modelSize.x + modelSize.y * modelSize.y + modelSize.z * modelSize.z);
+		float modelLength = Mathf.Sqrt (SDTP.xRange * SDTP.xRange + SDTP.yRange * SDTP.yRange + SDTP.zRange * SDTP.zRange);
 
 		if (modelLength < 50)
         {

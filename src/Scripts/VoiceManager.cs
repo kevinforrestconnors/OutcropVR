@@ -13,7 +13,7 @@ public class VoiceManager : MonoBehaviour
     void Start()
     {
         
-        Keywords_array = new string[13];
+        Keywords_array = new string[12];
         Keywords_array[0] = "Speed up";
         Keywords_array[1] = "Increase speed";
         Keywords_array[2] = "Slow down";
@@ -26,7 +26,6 @@ public class VoiceManager : MonoBehaviour
         Keywords_array[9] = "Resume";
         Keywords_array[10] = "Resume drawing";
         Keywords_array[11] = "Delete";
-        Keywords_array[12] = "Save";
 
         keywordRecognizer = new KeywordRecognizer(Keywords_array);
         keywordRecognizer.OnPhraseRecognized += OnKeywordsRecognized;
@@ -55,7 +54,7 @@ public class VoiceManager : MonoBehaviour
         }
         else if (args.text == "Make surface")
         {
-            LaserPointer.MakingSurface();
+            //LaserPointer.MakingSurface();
         }
         else if (args.text == "Pause" || args.text == "Pause drawing")
         {
@@ -68,9 +67,6 @@ public class VoiceManager : MonoBehaviour
         else if (args.text == "Delete")
         {
             LaserPointer.Deleting();
-        } else if (args.text == "Save")
-        {
-            LaserPointer.Saving();
-        }
+        } 
     }
 }

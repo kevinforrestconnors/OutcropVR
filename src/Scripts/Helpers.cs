@@ -139,6 +139,24 @@ public class Helpers : MonoBehaviour {
         return new Vector2(trend, plunge);
     }
 
+	public static Vector3 GetNormalFromTrendAndPlunge(Vector3 trendPlungeRadius) {
+		float trend = trendPlungeRadius.x;
+		float plunge = trendPlungeRadius.y;
+		float radius = trendPlungeRadius.z;
+
+		float azimuth, elevation;
+
+		if (plunge > 0) {
+			azimuth = (Mathf.PI / 2) - (Mathf.PI * trend / 180);
+			elevation = plunge * Mathf.PI / 180;
+		} else {
+			azimuth = (1.5f * Mathf.PI) - (Mathf.PI * trend / 180);
+			elevation = -plunge * Mathf.PI / 180;
+		}
+
+		return SphericalToCartesian (new Vector3 (azimuth, elevation, radius));
+	}
+
     public static Vector2 GetStrikeAndDipFromNormal(Vector3 dir)
     {
         Vector2 trendAndPlunge = GetTrendAndPlungeFromNormal(dir);
