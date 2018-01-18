@@ -12,7 +12,11 @@ The other aspect is the "game" mode tools.  You can fly around your favorite out
 
 1. Clone or download the repository.
 
-2. Place `OutcropVR.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...` and browse to import the package.
+2. Place `OutcropVR.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...` and browse to import the filename `OutcropVR.unitypackage`.
+
+3. Click the Import button.
+
+4. If Steam VR asks for Recommended project settings, click Accept All.
 
 ## Creating a Scene
 
