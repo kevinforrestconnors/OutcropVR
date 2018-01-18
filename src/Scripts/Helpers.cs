@@ -79,13 +79,14 @@ public class Helpers : MonoBehaviour {
 
     /* Transforms spherical to Cartesian coordinates 
      Preconditions: theta and phi must be in radians
+     FOR RIGHT HANDED COORDINATE SYSTEM (y is up)
          */
     public static Vector3 SphericalToCartesian(float theta, float phi, float radius)
     {
-        float z = radius * Mathf.Sin(phi);
+        float y = radius * -Mathf.Sin(phi);
         float rCosElevation = radius * Mathf.Cos(phi);
-        float x = rCosElevation * Mathf.Cos(theta);
-        float y = rCosElevation * Mathf.Sin(theta);
+        float x = rCosElevation * -Mathf.Cos(theta);
+        float z = rCosElevation * -Mathf.Sin(theta);
 
         return new Vector3(x, y, z);
     }
@@ -113,22 +114,22 @@ public class Helpers : MonoBehaviour {
     public static Vector2 GetTrendAndPlungeFromNormal(Vector3 dir)
     {
         Vector3 spherical = CartesianToSpherical(dir);
-        float azimuth = spherical.x;
-        float elevation = spherical.y;
+        float theta = spherical.x;
+        float phi = spherical.y;
         // float radius = spherical.z;
 
         float trend;
         float plunge;
 
-        if (elevation > 0)
+        if (phi > 0)
         {
-            trend = (3 * Mathf.PI / 2 - azimuth) * 180 / Mathf.PI;
-            plunge = elevation * 180 / Mathf.PI;
+            trend = (3 * Mathf.PI / 2 - theta) * 180 / Mathf.PI;
+            plunge = phi * 180 / Mathf.PI;
         }
         else
         {
-            trend = (Mathf.PI / 2 - azimuth) * 180 / Mathf.PI;
-            plunge = -elevation * 180 / Mathf.PI;
+            trend = (Mathf.PI / 2 - theta) * 180 / Mathf.PI;
+            plunge = -phi * 180 / Mathf.PI;
         }
 
         if (trend > 360)
@@ -139,22 +140,17 @@ public class Helpers : MonoBehaviour {
         return new Vector2(trend, plunge);
     }
 
-	public static Vector3 GetNormalFromTrendAndPlunge(Vector3 trendPlungeRadius) {
-		float trend = trendPlungeRadius.x;
-		float plunge = trendPlungeRadius.y;
-		float radius = trendPlungeRadius.z;
+	public static Vector3 GetDirCosFromTrendAndPlunge(Vector2 trendPlunge) {
+		float trend = trendPlunge.x;
+		float plunge = trendPlunge.y;
+		float radius = 1;
 
-		float azimuth, elevation;
+		float theta, phi;
 
-		if (plunge > 0) {
-			azimuth = (Mathf.PI / 2) - (Mathf.PI * trend / 180);
-			elevation = plunge * Mathf.PI / 180;
-		} else {
-			azimuth = (1.5f * Mathf.PI) - (Mathf.PI * trend / 180);
-			elevation = -plunge * Mathf.PI / 180;
-		}
+		theta = (90 - trend) * Mathf.PI / 180;
+		phi = -plunge * Mathf.PI / 180;
 
-		return SphericalToCartesian (new Vector3 (azimuth, elevation, radius));
+		return SphericalToCartesian (new Vector3 (theta, phi, radius));
 	}
 
     public static Vector2 GetStrikeAndDipFromNormal(Vector3 dir)
@@ -547,7 +543,15 @@ public class Helpers : MonoBehaviour {
 
 		for (int i = 0; i < height - 1; i++) {
 			for (int j = 0; j < width - 1; j++) {
+				// Makes this kind of triangle:
+				//   .....
+				//   .  /
+				//   ./
 				triangles.Add (new Vector3 ((i + 1) * width + j, i * width + j + 1, i * width + j));
+				// Makes this kind of triangle:
+				//      /
+				//    / |
+				//  /....
 				triangles.Add (new Vector3 ((i + 1) * width + j, (i + 1) * width + j + 1, i * width + j + 1));
 			}
 		}

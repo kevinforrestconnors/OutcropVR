@@ -105,7 +105,7 @@ public class LaserPointer : MonoBehaviour {
     {
         RaycastHit hit = new RaycastHit();
 
-        if (Physics.Raycast(trackedObj.transform.position, transform.forward, out hit, 1000))
+        if (Physics.Raycast(trackedObj.transform.position, transform.forward, out hit, 50000))
         {
             hitPoint = hit.point;
             
@@ -322,7 +322,7 @@ public class LaserPointer : MonoBehaviour {
 
 			if (!currentGeoModel) {
 				RaycastHit hit = DoLaser ();
-				if (hit.collider.gameObject.name != "OutcropVRLine(Clone)" && 
+				if (hit.collider && hit.collider.gameObject.name != "OutcropVRLine(Clone)" && 
 					hit.collider.gameObject.name != "OutcropVRPlane(Clone)" && 
 					hit.collider.gameObject.name != "Red Laser(Clone)" && 
 					hit.collider.gameObject.name != "Green Laser(Clone)" && 

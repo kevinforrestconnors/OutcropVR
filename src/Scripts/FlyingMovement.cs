@@ -44,12 +44,20 @@ public class FlyingMovement : MonoBehaviour {
         else if (speed == Config.Speed.Fast)
         {
             speed = Config.Speed.Lightning;
-        }
+		} 
+		else if (speed == Config.Speed.Lightning)
+		{
+			speed = Config.Speed.Infinity;
+		}
     }
 
     public static void SpeedDown()
     {
-        if (speed == Config.Speed.Lightning)
+		if (speed == Config.Speed.Infinity)
+		{
+			speed = Config.Speed.Lightning;
+		}
+        else if (speed == Config.Speed.Lightning)
         {
             speed = Config.Speed.Fast;
         }
@@ -76,7 +84,6 @@ public class FlyingMovement : MonoBehaviour {
         if (!Config.useConfigSpeed)
         {
             speed = CalculateSpeedBasedOnModelSize();
-            Debug.Log(speed);
         }
     }
 
@@ -91,10 +98,10 @@ public class FlyingMovement : MonoBehaviour {
 
             if (Controller.GetAxis().y > 0)
             {
-                player.transform.position = Vector3.MoveTowards(player.transform.position, player.transform.position + trackedObj.transform.forward, step);
+                player.transform.position = Vector3.MoveTowards(player.transform.position, player.transform.position + trackedObj.transform.forward * 10, step);
             } else
             {
-                player.transform.position = Vector3.MoveTowards(player.transform.position, player.transform.position - trackedObj.transform.forward, step);
+                player.transform.position = Vector3.MoveTowards(player.transform.position, player.transform.position - trackedObj.transform.forward * 10, step);
             }     
         } 
     }

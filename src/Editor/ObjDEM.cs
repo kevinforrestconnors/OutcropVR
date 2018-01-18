@@ -11,8 +11,8 @@ public class ObjDEM : ScriptableObject {
 
     private static string database = "https://data.worldwind.arc.nasa.gov";
     private static float meterPerDegreeLat = 111619.0f;
-	private static float resolution = 90.0f;
-	private static float resolutionInDeg = resolution / meterPerDegreeLat;
+	private static float baseResolution = 30.0f;
+	private static float resolutionInDeg = baseResolution / meterPerDegreeLat;
 
     private static List<int> elevationData = new List<int>();
     private static int[,] ElevationData;
@@ -83,6 +83,59 @@ public class ObjDEM : ScriptableObject {
     
     }
 
+	private void GetElevationDataFromRaw(string rawFile, int numRows, int numCols, bool use16Bit) {
+
+		byte[] data;
+
+		using (FileStream fs = new FileStream (Application.dataPath + "/" + rawFile, FileMode.Open, FileAccess.Read)) {
+
+			data = new byte[fs.Length];
+
+			int numBytesToRead = (int)fs.Length;
+			int numBytesRead = 0;
+			while (numBytesToRead > 0)
+			{
+				// Read may return anything from 0 to numBytesToRead.
+				int n = fs.Read(data, numBytesRead, numBytesToRead);
+
+				// Break when the end of the file is reached.
+				if (n == 0)
+					break;
+
+				numBytesRead += n;
+				numBytesToRead -= n;
+			}
+		} 
+
+		if (BitConverter.IsLittleEndian) {
+			Array.Reverse(data);
+		}
+
+		if (use16Bit) {
+			for (int i = data.Length - 1; i > 0; i -= 2) {
+				short int16 = (short)(((data [i - 1] & 0xFF) << 8) | (data [i] & 0xFF));
+				elevationData.Add ((int)int16);
+			}
+		} else {
+		
+			for (int i = data.Length - 1; i != -1; i--) {
+				elevationData.Add ((int)data [i]);
+			}
+
+		}
+
+		ElevationData = new int[numRows, numCols];
+
+		for (int x = 0; x < numRows; x++)
+		{
+			for (int y = 0; y < numCols; y++)
+			{
+				int start = numCols * x;
+				ElevationData[x, y] = elevationData[start + y];
+			}
+		}
+	}
+
     private IEnumerator WWWImageData(string req, string outfile)
     {
         WWW res = new WWW(req);
@@ -126,8 +179,6 @@ public class ObjDEM : ScriptableObject {
 
         List<Vector3> data = new List<Vector3>();
 
-        // print("    Converting points to UTM...")
-
         for (int i = 0; i < ElevationData.GetLength(0); i++)
         {
             for (int j = 0; j < ElevationData.GetLength(1); j++) {
@@ -140,48 +191,94 @@ public class ObjDEM : ScriptableObject {
             }
         }
 
-        IEnumerable<float> xs = data.Select(e => e.x);
-        IEnumerable<float> ys = data.Select(e => e.y);
-        IEnumerable<float> zs = data.Select(e => e.z);
+		if (SDTP.SceneFileExists ()) {
+			xRange = SDTP.xRange;
+			yRange = SDTP.yRange;
+			zRange = SDTP.zRange;
+			minZ = SDTP.minZ;
+			meanX = SDTP.meanX;
+			meanY = SDTP.meanY;
+		} else {
+			IEnumerable<float> xs = data.Select (e => e.x);
+			IEnumerable<float> ys = data.Select (e => e.y);
+			IEnumerable<float> zs = data.Select (e => e.z);
 
-		float xMin = xs.Aggregate((a, b) => a < b ? a : b);
-		float yMin = ys.Aggregate((a, b) => a < b ? a : b);
-		float zMin = zs.Aggregate((a, b) => a < b ? a : b);
-		float xMax = xs.Aggregate((a, b) => a > b ? a : b);
-		float yMax = ys.Aggregate((a, b) => a > b ? a : b);
-		float zMax = zs.Aggregate((a, b) => a > b ? a : b);
+			float xMin = xs.Aggregate ((a, b) => a < b ? a : b);
+			float yMin = ys.Aggregate ((a, b) => a < b ? a : b);
+			float zMin = zs.Aggregate ((a, b) => a < b ? a : b);
+			float xMax = xs.Aggregate ((a, b) => a > b ? a : b);
+			float yMax = ys.Aggregate ((a, b) => a > b ? a : b);
+			float zMax = zs.Aggregate ((a, b) => a > b ? a : b);
 
-		// update global variables for later use
-		xRange = xMax - xMin;
-		yRange = yMax - yMin;
-		zRange = zMax - zMin;
-		minZ = Mathf.Floor(zMin);
-        meanX = Mathf.Floor((xMin + xMax) / 2);
-        meanY = Mathf.Floor((yMin + yMax) / 2);
+			// update global variables for later use
+			xRange = xMax - xMin;
+			yRange = yMax - yMin;
+			zRange = zMax - zMin;
+			minZ = Mathf.Floor (zMin);
+			meanX = Mathf.Floor ((xMin + xMax) / 2);
+			meanY = Mathf.Floor ((yMin + yMax) / 2);
+		}
 
         return data.Select(p => new Vector3(p.x - meanX, p.y - meanY, p.z - minZ)).ToList();
     }
 
+	private List<Vector3> ElevationPointsToXYZ(float xOrigin, float yOrigin, float resolution) {
+
+		List<Vector3> data = new List<Vector3>();
+
+		for (int i = 0; i < ElevationData.GetLength(0); i++)
+		{
+			for (int j = 0; j < ElevationData.GetLength(1); j++) {
+				float x = xOrigin + resolution * j;
+				float y = yOrigin - resolution * i;
+				float z = (float)ElevationData[i, j];
+				Vector3 point = new Vector3(x, y, z);
+				data.Add(point);
+			}
+		}
+
+		if (SDTP.SceneFileExists ()) {
+			xRange = SDTP.xRange;
+			yRange = SDTP.yRange;
+			zRange = SDTP.zRange;
+			minZ = SDTP.minZ;
+			meanX = SDTP.meanX;
+			meanY = SDTP.meanY;
+		} else {
+			IEnumerable<float> xs = data.Select (e => e.x);
+			IEnumerable<float> ys = data.Select (e => e.y);
+			IEnumerable<float> zs = data.Select (e => e.z);
+
+			float xMin = xs.Aggregate ((a, b) => a < b ? a : b);
+			float yMin = ys.Aggregate ((a, b) => a < b ? a : b);
+			float zMin = zs.Aggregate ((a, b) => a < b ? a : b);
+			float xMax = xs.Aggregate ((a, b) => a > b ? a : b);
+			float yMax = ys.Aggregate ((a, b) => a > b ? a : b);
+			float zMax = zs.Aggregate ((a, b) => a > b ? a : b);
+
+			// update global variables for later use
+			xRange = xMax - xMin;
+			yRange = yMax - yMin;
+			zRange = zMax - zMin;
+			minZ = Mathf.Floor (zMin);
+			meanX = Mathf.Floor ((xMin + xMax) / 2);
+			meanY = Mathf.Floor ((yMin + yMax) / 2);
+		}
+
+
+		return data.Select(p => new Vector3(p.x - meanX, p.y - meanY, p.z - minZ)).ToList();
+	
+	}
+
     // Writes out points to an .obj file
     // Precondition: FetchElevationData has been called
-    private void WritePointsToObj(float minLong, float maxLong, float minLat, float maxLat, string filename)
+    private void WritePointsToObj(List<Vector3> points, string filename)
     {
         string fp = Application.dataPath + "/" + filename;
         File.Delete(fp);
         File.Create(fp).Dispose();
 
-        List<Vector3> points = ElevationPointsToXYZ(minLong, maxLong, minLat, maxLat);
-
-		float[,] xyPoints = new float[points.Count, 2];
-
-		for (int i = 0; i < points.Count; i++)
-		{
-			Vector3 p = points[i];
-			xyPoints[i, 0] = p.x;
-			xyPoints[i, 1] = p.y;
-		}
-
-		List<Vector3> triangles = Helpers.Triangulate(ElevationData.GetLength(0), ElevationData.GetLength(1));
+		List<Vector3> triangles = Helpers.Triangulate(ElevationData.GetLength(1), ElevationData.GetLength(0));
 
         using (StreamWriter file = new StreamWriter(fp, true))
         {
@@ -335,27 +432,41 @@ public class ObjDEM : ScriptableObject {
 
     }
 
+	public static void CreateSceneFile(string name) {
+		if (!SDTP.SceneFileExists ()) {
+			SDTP.modelName = name;
+			SDTP.meanX = meanX;
+			SDTP.meanY = meanY;
+			SDTP.minZ = minZ;
+			SDTP.xRange = xRange;
+			SDTP.yRange = yRange;
+			SDTP.zRange = zRange;
+			SDTP.WriteSDTPItemsToFile ();
+		}
+	}
 
     public void MakeLandscape(float minLong, float maxLong, float minLat, float maxLat, string modelFilename, string imageFilename)
     {
+		elevationData = new List<int>();
 		FetchImageData(minLong, maxLong, minLat, maxLat, imageFilename);
-		FetchElevationData(minLong, maxLong, minLat, maxLat);    
-        WritePointsToObj(minLong, maxLong, minLat, maxLat, modelFilename);
+		FetchElevationData(minLong, maxLong, minLat, maxLat);
+		List<Vector3> points = ElevationPointsToXYZ(minLong, maxLong, minLat, maxLat);
+		WritePointsToObj(points, modelFilename);
+		CreateSceneFile (modelFilename);
     }
 
+	public void MakeLandScapeFromRAW(string rawFile, int numRows, int numCols, float xOrigin, float yOrigin, float resolution, bool use16Bit, string modelFilename) {
+		elevationData = new List<int>();
+		GetElevationDataFromRaw (rawFile, numRows, numCols, use16Bit);
+		List<Vector3> points = ElevationPointsToXYZ (xOrigin, yOrigin, resolution);
+		WritePointsToObj(points, modelFilename);
+		CreateSceneFile (modelFilename);
+	}
 
     public void ConvertPhotogrammetryModel(string photogrammetryFilename)
     {
-        ScaleDownObj(photogrammetryFilename);
-
-		SDTP.modelName = photogrammetryFilename;
-		SDTP.meanX = meanX;
-		SDTP.meanY = meanY;
-		SDTP.minZ = minZ;
-		SDTP.xRange = xRange;
-		SDTP.yRange = yRange;
-		SDTP.zRange = zRange;
-		SDTP.WriteSDTPItemsToFile ();
+        ScaleDownObj (photogrammetryFilename);
+		CreateSceneFile (photogrammetryFilename);
     }
 
 
@@ -365,25 +476,16 @@ public class ObjDEM : ScriptableObject {
         Vector2 centroid = FindCentroidOfObj(photogrammetryFilename, zone);
         float lon = centroid.x;
         float lat = centroid.y;
-        float minLong = lon - longRange / 2;
-        float maxLong = lon + longRange / 2;
-        float minLat = lat - latRange / 2;
-        float maxLat = lat + latRange / 2;
+		float minLong = (float)(Math.Round ((double)(lon - longRange / 2), 2));
+		float maxLong = (float)(Math.Round ((double)(lon + longRange / 2), 2));
+		float minLat = (float)(Math.Round ((double)(lat - latRange / 2), 2));
+		float maxLat = (float)(Math.Round ((double)(lat + latRange / 2), 2));
 
-
-
+		elevationData = new List<int>();
         FetchElevationData(minLong, maxLong, minLat, maxLat);
         FetchImageData(minLong, maxLong, minLat, maxLat, imageFilename);
-        WritePointsToObj(minLong, maxLong, minLat, maxLat, modelFilename);
-        ScaleDownObj(photogrammetryFilename);
-
-		SDTP.modelName = photogrammetryFilename;
-		SDTP.meanX = meanX;
-		SDTP.meanY = meanY;
-		SDTP.minZ = minZ;
-		SDTP.xRange = xRange;
-		SDTP.yRange = yRange;
-		SDTP.zRange = zRange;
-		SDTP.WriteSDTPItemsToFile ();
+		List<Vector3> points = ElevationPointsToXYZ(minLong, maxLong, minLat, maxLat);
+		WritePointsToObj (points, modelFilename);
+		CreateSceneFile (photogrammetryFilename);
     }
 }

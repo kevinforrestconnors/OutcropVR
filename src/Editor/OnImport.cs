@@ -11,16 +11,19 @@ public class OnImport : AssetPostprocessor
 		// Get the object name from the filename.  e.g. /PhotogrammetryModels/Rocas_100K.obj -> Rocas_100K
 		int land1sp = MakeLandscape.modelName.LastIndexOf ("/") + 1;
 		int land2sp = LandscapePhotogrammetryModel.modelName.LastIndexOf ("/") + 1;
+		int land3sp = MakeLandscapeRAWFile.modelName.LastIndexOf ("/") + 1;
 		int photogrammetry1sp = ConvertPhotogrammetryModel.photogrammetryModelName.LastIndexOf ("/") + 1;
-		int photogrammetry2sp = LandscapePhotogrammetryModel.photogrammetryModelName.LastIndexOf ("/") + 1;
+		//int photogrammetry2sp = LandscapePhotogrammetryModel.photogrammetryModelName.LastIndexOf ("/") + 1;
 
-		string landscapeModel, landscapeModel2, photogrammetryModel, photogrammetryModel2;
+		string landscapeModel, landscapeModel2, landscapeModel3, photogrammetryModel;//, photogrammetryModel2;
 
 		try {
 			landscapeModel = MakeLandscape.modelName.Substring(land1sp, MakeLandscape.modelName.IndexOf(".") - land1sp);
 			landscapeModel2 = LandscapePhotogrammetryModel.modelName.Substring(land2sp, LandscapePhotogrammetryModel.modelName.IndexOf(".") - land2sp);
+			landscapeModel3 = MakeLandscapeRAWFile.modelName.Substring(land3sp, MakeLandscapeRAWFile.modelName.IndexOf(".") - land3sp);
 			photogrammetryModel = ConvertPhotogrammetryModel.photogrammetryModelName.Substring(photogrammetry1sp, ConvertPhotogrammetryModel.photogrammetryModelName.IndexOf(".") - photogrammetry1sp);
-			photogrammetryModel2 = LandscapePhotogrammetryModel.photogrammetryModelName.Substring(photogrammetry2sp, LandscapePhotogrammetryModel.photogrammetryModelName.IndexOf(".") - photogrammetry2sp);
+			//photogrammetryModel2 = LandscapePhotogrammetryModel.photogrammetryModelName.Substring(photogrammetry2sp, LandscapePhotogrammetryModel.photogrammetryModelName.IndexOf(".") - photogrammetry2sp);
+			Debug.Log(landscapeModel2);
 		} catch (ArgumentOutOfRangeException) {
 			throw new Exception ("OnImportError: Invalid model name.");
 		}
@@ -42,6 +45,14 @@ public class OnImport : AssetPostprocessor
             g.tag = "Landscape";
         }
 
+		if (g.name.Equals(landscapeModel3))
+		{
+			RotateModel(g);
+			ApplyMeshColliderToMeshParts(g);
+			MapTexturesToMeshParts(g, MakeLandscapeRAWFile.mapName);
+			g.tag = "Landscape";
+		}
+
         if (g.name.Equals(photogrammetryModel + "Scaled"))
         {
             RotateModel(g);
@@ -49,14 +60,6 @@ public class OnImport : AssetPostprocessor
             MapTexturesToMeshParts(g, ConvertPhotogrammetryModel.textureName);
             g.tag = "Photogrammetry Model";
         } 
-
-        if (g.name.Equals(photogrammetryModel2 + "Scaled"))
-        {
-            RotateModel(g);
-            ApplyMeshColliderToMeshParts(g);
-            MapTexturesToMeshParts(g, LandscapePhotogrammetryModel.textureName);
-            g.tag = "Photogrammetry Model";
-        }
     }
 
     void RotateModel(GameObject g)

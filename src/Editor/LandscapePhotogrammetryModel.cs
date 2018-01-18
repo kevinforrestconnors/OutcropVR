@@ -28,7 +28,6 @@ class LandscapePhotogrammetryModel : EditorWindow
 
         GUILayout.Label("Base Settings", EditorStyles.boldLabel);
         photogrammetryModelName = EditorGUILayout.TextField("Photogrammetry Model: ", photogrammetryModelName);
-        textureName = EditorGUILayout.TextField("Photogrammetry Texture: ", textureName);
         longRange = EditorGUILayout.TextField("Longitude Range", longRange);
         latRange = EditorGUILayout.TextField("Latitude Range", latRange);
         zone = EditorGUILayout.TextField("Zone", zone);

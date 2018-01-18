@@ -108,7 +108,6 @@ public static class SDTP {
 			}
 		}
 	}
-	
 
 	public static void WriteSDTPItemsToFile()
 	{
@@ -134,71 +133,79 @@ public static class SDTP {
 			lines [3] = " ";
 		}
 
-		File.WriteAllLines(Application.dataPath + "/SDTPData" + SceneManager.GetActiveScene ().name + ".txt", lines);
+		File.WriteAllLines(Application.dataPath + "/" + SceneManager.GetActiveScene ().name + "SDTPData.txt", lines);
 	}
 
-	public static void ReadSceneFileHeader()
+	public static bool SceneFileExists() {
+		return ReadSceneFileHeader ();
+	}
+
+	public static bool ReadSceneFileHeader()
 	{
-			
-		StreamReader file = new StreamReader (Application.dataPath + "/SDTPData" + SceneManager.GetActiveScene ().name + ".txt");
-		string line;
+		if (File.Exists(Application.dataPath + "/" + SceneManager.GetActiveScene ().name + "SDTPData.txt")) {
+			StreamReader file = new StreamReader (Application.dataPath + "/" + SceneManager.GetActiveScene ().name + "SDTPData.txt");
+			string line;
 
-		while ((line = file.ReadLine ()) != null) {
+			while ((line = file.ReadLine ()) != null) {
 
-			if (line.StartsWith ("# Photogrammetry Model: ")) {
-				modelName = line.Substring ("# Photogrammetry Model: ".Length);
+				if (line.StartsWith ("# Photogrammetry Model: ")) {
+					modelName = line.Substring ("# Photogrammetry Model: ".Length);
+				}
+
+				if (line.StartsWith ("# Shift: ")) {
+					string[] scaleFactor = line.Substring ("# Shift: ".Length).Split (new char[] { ' ' });
+					meanX = float.Parse(scaleFactor [0].Substring(1)); // ignore the negative sign
+					meanY = float.Parse(scaleFactor [1].Substring(1));
+					minZ = float.Parse(scaleFactor [2].Substring(1));
+				}
+
+				if (line.StartsWith ("# Range: ")) {
+					string[] range = line.Substring("# Range: ".Length).Split (new char[] { ' ' });
+					xRange = float.Parse(range [0]);
+					yRange = float.Parse(range [1]);
+					zRange = float.Parse(range [2]);
+				}
 			}
 
-			if (line.StartsWith ("# Shift: ")) {
-				string[] scaleFactor = line.Substring ("# Shift: ".Length).Split (new char[] { ' ' });
-				meanX = float.Parse(scaleFactor [0].Substring(1)); // ignore the negative sign
-				meanY = float.Parse(scaleFactor [1].Substring(1));
-				minZ = float.Parse(scaleFactor [2].Substring(1));
-			}
-
-			if (line.StartsWith ("# Range: ")) {
-				string[] range = line.Substring("# Range: ".Length).Split (new char[] { ' ' });
-				xRange = float.Parse(range [0]);
-				yRange = float.Parse(range [1]);
-				zRange = float.Parse(range [2]);
-			}
+			file.Close ();
+			return true;
+		} else {
+			return false;
 		}
-
-		file.Close ();
-	
 	}
 		
 	public static void RecoverSTDPItems() {
-		
-		StreamReader file = new StreamReader(Application.dataPath + "/SDTPData" + SceneManager.GetActiveScene ().name + ".txt");
-		string line;
 
-		while ((line = file.ReadLine()) != null) {
+		if (File.Exists (Application.dataPath + "/" + SceneManager.GetActiveScene ().name + "SDTPData.txt")) {
+			StreamReader file = new StreamReader (Application.dataPath + "/" + SceneManager.GetActiveScene ().name + "SDTPData.txt");
+			string line;
 
-			if (line.EndsWith ("SD")) {
-				string[] outcropVRPlane = line.Split (new char[] {','});
-				Vector3 centroid = new Vector3 (float.Parse (outcropVRPlane [0]), float.Parse (outcropVRPlane [1]), float.Parse (outcropVRPlane [2]));
-				float strike = float.Parse (outcropVRPlane [3]);
-				float dip = float.Parse (outcropVRPlane [4]);
-				float hypot = float.Parse (outcropVRPlane [5]);
+			while ((line = file.ReadLine ()) != null) {
 
-				// Add STDPItem with shift
-				AddSDTPItem (centroid.x - meanX, centroid.y - meanY, centroid.z - minZ, strike, dip, hypot, "SD");
-			} 
-			else if (line.EndsWith ("TP")) {
-				string[] outcropVRLine = line.Split (new char[] {','});
-				Vector3 centroid = new Vector3 (float.Parse (outcropVRLine [0]), float.Parse (outcropVRLine [1]), float.Parse (outcropVRLine [2]));
-				float trend = float.Parse (outcropVRLine [3]);
-				float plunge = float.Parse (outcropVRLine [4]);
-				float hypot = float.Parse (outcropVRLine [5]);
+				if (line.EndsWith ("SD")) {
+					string[] outcropVRPlane = line.Split (new char[] { ',' });
+					Vector3 centroid = new Vector3 (float.Parse (outcropVRPlane [0]), float.Parse (outcropVRPlane [1]), float.Parse (outcropVRPlane [2]));
+					float strike = float.Parse (outcropVRPlane [3]);
+					float dip = float.Parse (outcropVRPlane [4]);
+					float hypot = float.Parse (outcropVRPlane [5]);
 
-				// Add STDPItem with shift
-				AddSDTPItem (centroid.x - meanX, centroid.y - meanY, centroid.z - minZ, trend, plunge, hypot, "TP");
+					// Add STDPItem with shift
+					AddSDTPItem (centroid.x - meanX, centroid.y - meanY, centroid.z - minZ, strike, dip, hypot, "SD");
+				} else if (line.EndsWith ("TP")) {
+					string[] outcropVRLine = line.Split (new char[] { ',' });
+					Vector3 centroid = new Vector3 (float.Parse (outcropVRLine [0]), float.Parse (outcropVRLine [1]), float.Parse (outcropVRLine [2]));
+					float trend = float.Parse (outcropVRLine [3]);
+					float plunge = float.Parse (outcropVRLine [4]);
+					float hypot = float.Parse (outcropVRLine [5]);
+
+					// Add STDPItem with shift
+					AddSDTPItem (centroid.x - meanX, centroid.y - meanY, centroid.z - minZ, trend, plunge, hypot, "TP");
+				}
 			}
-		}
 
-		file.Close ();
-		WriteSDTPItemsToFile ();
+			file.Close ();
+			WriteSDTPItemsToFile ();
+		}
 	}
 }
 
