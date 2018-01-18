@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Rendering;
 
 public class LaserPointer : MonoBehaviour {
 
@@ -215,7 +216,7 @@ public class LaserPointer : MonoBehaviour {
 		}
     }
 
-	public void CreateLine(Vector3 centroid, float trend, float plunge, float hypot) {
+	public GameObject CreateLine(Vector3 centroid, float trend, float plunge, float hypot) {
 
 		GameObject trendPlungeObj = Instantiate (outcropVRLinePrefab);
 
@@ -238,9 +239,14 @@ public class LaserPointer : MonoBehaviour {
 
 		// Set Rotation
 		trendPlungeObj.transform.transform.rotation = Quaternion.FromToRotation(Vector3.up, p2 - p1);
+
+		// Cast no shadows
+		trendPlungeObj.GetComponent<Renderer> ().shadowCastingMode = ShadowCastingMode.Off;
+
+		return trendPlungeObj;
 	}
 
-	public void CreatePlane(Vector3 centroid, float strike, float dip, float hypot) {
+	public GameObject CreatePlane(Vector3 centroid, float strike, float dip, float hypot) {
 	
 		// Find corner points on plane
 		float x1 = centroid.x - hypot / 4;
@@ -259,11 +265,11 @@ public class LaserPointer : MonoBehaviour {
 		pps.SetStrike (strike);
 		pps.SetDip (dip);
 
-		// Set position
-		strikeDipObj.transform.position = centroid;
-
 		// Set scale
 		strikeDipObj.transform.localScale = new Vector3 (width, lineWidth, length);
+
+		// Set position
+		strikeDipObj.transform.position = centroid;
 
 		// Set rotation 
 		if (strike < 180) {
@@ -271,7 +277,19 @@ public class LaserPointer : MonoBehaviour {
 		} else {
 			strikeDipObj.transform.Rotate (0, strike - 180, dip);
 		}
+			
+		GameObject strikeLine = CreateLine (centroid, strike, 0, 1);
+		strikeLine.name = "Strike Line(Clone)";
+		strikeLine.transform.parent = strikeDipObj.transform;
+		strikeLine.transform.localScale = new Vector3 (0.05f, 0.5f, 0.05f);
 
+		GameObject dipLine = CreateLine (centroid, strike + 90, dip, 1);
+		dipLine.name = "Dip Line(Clone)";
+		dipLine.transform.parent = strikeDipObj.transform;
+		dipLine.transform.localScale = new Vector3 (0.05f, 0.25f, 0.05f);
+		dipLine.transform.localPosition = new Vector3 (strike < 180 ? 0.25f : -0.25f, 0, 0);
+
+		return strikeDipObj;
 	}
 
 	public void DrawSDTPItems() {
