@@ -5,17 +5,14 @@
 OutcropVR is a toolkit for geologists.  One aspect of OutcropVR is of building a scene to view in VR.  OutcropVR supports creation of real-world landscape data from coordinates or georeferenced models, as well as localization from UTM values. 
 
 
-The other aspect is the "game" mode tools.  You can fly around your favorite outcrops and get unique angles that are impossible or difficult to see in real life.  With the laser pointer tool, you can create lines and planes that then display the trend/plunge or strike/dip.  
+The other aspect is the "game" mode tools.  You can fly around your favorite outcrops and see unique angles that are impossible or difficult to get in real life.  With the laser pointer tool, you can create lines and planes that then display the trend/plunge or strike/dip.  
 
 
-## Installation and Setup
-0. Install Python 3 and pip.
+## Installation
 
-1. `pip install numpy && pip install scipy && pip install utm`
+1. Clone or download the repository.
 
 2. Place `OutcropVR.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...` and browse to import the package.
-
-3. Find the line within `Editor/MakeLandscape.cs` that says `FileName="C:/Program Files/Python36/python.exe"` and change the string to your python 3 path. Repeat for files `Editor/ConvertPhotogrammetryModel.cs` and `Editor/LandscapePhotogrammetryModel.cs`.
 
 ## Creating a Scene
 
