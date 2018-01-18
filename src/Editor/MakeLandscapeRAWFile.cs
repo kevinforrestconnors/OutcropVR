@@ -6,15 +6,15 @@ using System.Diagnostics;
 public class MakeLandscapeRAWFile : EditorWindow
 {
 
-	string RAWFile = "MouseRun.raw";
-	string numRows = "376";
-	string numCols = "300";
-	string utmXOrigin = "636182";
-	string utmYOrigin = "4190301";
-	string resolution = "30";
+	string RAWFile = "data.raw";
+	string numRows = "0";
+	string numCols = "0";
+	string utmXOrigin = "600000";
+	string utmYOrigin = "4000000";
+	string resolution = "0";
 	bool use16Bit = true;
-	public static string modelName = "MouseRun.obj";
-	public static string mapName = "MouseRun.tif";
+	public static string modelName = "data.obj";
+	public static string mapName = "map.tif";
 	string done = "Generate";
 
 	[MenuItem("Tools/Make Elevation Model from .raw")]
@@ -28,6 +28,7 @@ public class MakeLandscapeRAWFile : EditorWindow
 
 		GUILayout.Label("Base Settings", EditorStyles.boldLabel);
 		RAWFile = EditorGUILayout.TextField("RAW File", RAWFile);
+		mapName = EditorGUILayout.TextField ("Texture Name:", mapName);
 		numRows = EditorGUILayout.TextField("Number of Rows", numRows);
 		numCols = EditorGUILayout.TextField("Number of Columns", numCols);
 		utmXOrigin = EditorGUILayout.TextField("UTM Easting", utmXOrigin);
@@ -35,7 +36,7 @@ public class MakeLandscapeRAWFile : EditorWindow
 		resolution =  EditorGUILayout.TextField("Resolution", resolution);
 		use16Bit = EditorGUILayout.Toggle ("Use 16 Bit (vs 8)", use16Bit);
 		modelName = EditorGUILayout.TextField("Model Filename (output)", modelName);
-		mapName = EditorGUILayout.TextField ("Map Name: (output)", mapName);
+
 
 		if (GUILayout.Button(done))
 		{
