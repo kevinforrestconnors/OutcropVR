@@ -12,32 +12,42 @@ The other aspect is the "game" mode tools.  You can fly around your favorite out
 
 1. Clone or download the repository.
 
-2. Place `OutcropVR.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...` and browse to import the package.
+2. Place `OutcropVR.unitypackage` somewhere you can find it.  Open Unity and select `Assets/Import Package/Custom Package...` and browse to import the filename `OutcropVR.unitypackage`.
+
+3. Click the `Import` button.
+
+4. If Steam VR asks for Recommended project settings, click `Accept All`.
 
 ## Creating a Scene
 
 The general workflow is:
 
-1. Import models and textures to Unity
-2. Use the `Tools` menu to localize your models and create landscapes (if desired)
-3. That's it!  Hit play and strap on your Vive gear.
-
-### Tools/Make Elevation Model from Range
-
-Use the Unity menu to select Tools/Make Elevation Model from Range.  This function produces a digital elevation map of an area specified with coordinates.  Note that too large of a range (more than a degree or so) or too small (a hundreth of a degree or so) will result in an error.
+1. Go to the Template scene.  Copy all of the objects in the scene; these are: `[SteamVR]`, `Player`, `EventSystem`, `Directional Light`, and `VoiceManager`.
+2. Create a new scene.  Delete `Main Camera` and `Directional Light`, then paste the objects you copied in step 1.
+3. Import models and textures to Unity
+4. Use the `Tools` menu to localize your models and create landscapes (if desired)
+5. That's it!  Hit play and strap on your Vive gear.
 
 ### Tools/Localize Photogrammetry Model from UTM
 
-Use the Unity menu to select Tools/Localize Photogrammetry Model from UTM.
-This function takes in a photogrammetry .obj file that is in UTM coordinates, and converts it into smaller numbers so that Unity can work with it.  If a texture file is supplied as well, it will be mapped onto the object. 
+Use the Unity menu to select `Tools/Localize Photogrammetry Model from UTM`.
+This function takes in a photogrammetry .obj file that is in UTM coordinates, and converts it into smaller numbers so that Unity can work with it.  If a texture file is supplied as well, it will be mapped onto the object.
 
 Supported texture formats: `.psd`, `.tiff`, `.jpg`, `.tga`, `.png`, `.gif`, `.bmp`, `.iff`, `.pict`.
 
 ### Tools/Make Elevation Model Around Photogrammetry Model
 
-Use the Unity menu to select Tools/Make Elevation Model Around Photogrammetry Model.  This function takes in a photogrammetry .obj file that is in UTM coordinates, converts it to smaller numbers so that Unity can handle it, and models a landscape around the centroid of the photogrammetry model.  An unconverted UTM file is mandatory because finding the centroid requires the original georeferenced data.  If a texture file is supplied as well, it will be mapped onto the object. 
+Use the Unity menu to select `Tools/Make Elevation Model Around Photogrammetry Model`.  This function takes in a photogrammetry .obj file that is in UTM coordinates and creates a digital elevation model around the centroid of the photogrammetry model.  An unconverted UTM file is mandatory because finding the centroid requires the original georeferenced data.
 
 Supported texture formats: `.psd`, `.tiff`, `.jpg`, `.tga`, `.png`, `.gif`, `.bmp`, `.iff`, `.pict`.
+
+### Tools/Make Elevation Model from Range
+
+Use the Unity menu to select `Tools/Make Elevation Model from Range`.  This function produces a digital elevation model of an area specified with coordinates.  Note that too large of a range (more than a degree or so) or too small (a hundreth of a degree or so) will result in an error.
+
+### Tools/Make Elevation Model from .raw
+
+Use the Unity menu to select `Tools/Make Elevation Model from .raw`.  This function takes 16 or 8-bit elevation data (integers representing an altitude) as a RAW file, and produces a digital elevation model.  Parameters required are: the number of rows in the .raw data, the number of columns, the UTM Easting and Northing values for the origin, and the resolution (in meters).  You might be able to find these values in a `.hdr` file, depending on how you obtained the `.raw` data.
 
 ## In-Scene Functions
 
