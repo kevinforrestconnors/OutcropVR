@@ -52,38 +52,13 @@ public static class SDTP {
 
 		public override string ToString()
 		{
-			// Truncate all but 1 sig fig
-			string xs = (x + meanX).ToString();
-			string ys = (y + meanY).ToString();
-			string zs = (z + minZ).ToString();
+			string xs = ((double)x + meanX).ToString ("0.000");
+			string ys = ((double)y + meanY).ToString ("0.000");
+			string zs = (z + minZ).ToString("0.00");
 			string sts = strikeOrTrend.ToString ();
 			string dps = dipOrPlunge.ToString ();
 			string hols = hypot.ToString ();
 
-			if (xs.IndexOf(".") > 0)
-			{
-				xs = xs.Substring(0, xs.IndexOf(".") + 2);
-			}
-			if (ys.IndexOf(".") > 0)
-			{
-				ys = ys.Substring(0, ys.IndexOf(".") + 2);
-			}
-			if (zs.IndexOf(".") > 0)
-			{
-				zs = zs.Substring(0, zs.IndexOf(".") + 2);
-			}
-			if (sts.IndexOf(".") > 0)
-			{
-				sts = sts.Substring(0, sts.IndexOf(".") + 2);
-			}
-			if (dps.IndexOf(".") > 0)
-			{
-				dps = dps.Substring(0, dps.IndexOf(".") + 2);
-			}
-			if (hols.IndexOf(".") > 0)
-			{
-				hols = hols.Substring(0, hols.IndexOf(".") + 2);
-			}
 			return xs + "," + ys + "," + zs + "," + sts + "," + dps + "," + hols + "," + type;
 		}
 	}
@@ -184,28 +159,33 @@ public static class SDTP {
 
 				if (line.EndsWith ("SD")) {
 					string[] outcropVRPlane = line.Split (new char[] { ',' });
-					Vector3 centroid = new Vector3 (float.Parse (outcropVRPlane [0]), float.Parse (outcropVRPlane [1]), float.Parse (outcropVRPlane [2]));
+					double centroidX = double.Parse (outcropVRPlane [0]);
+					double centroidY = double.Parse (outcropVRPlane [1]);
+					double centroidZ = double.Parse (outcropVRPlane [2]);
 					float strike = float.Parse (outcropVRPlane [3]);
 					float dip = float.Parse (outcropVRPlane [4]);
 					float hypot = float.Parse (outcropVRPlane [5]);
 
 					// Add STDPItem with shift
-					AddSDTPItem (centroid.x - meanX, centroid.y - meanY, centroid.z - minZ, strike, dip, hypot, "SD");
+					AddSDTPItem ((float)centroidX - meanX, (float)centroidY - meanY, (float)centroidZ - minZ, strike, dip, hypot, "SD");
 				} else if (line.EndsWith ("TP")) {
 					string[] outcropVRLine = line.Split (new char[] { ',' });
-					Vector3 centroid = new Vector3 (float.Parse (outcropVRLine [0]), float.Parse (outcropVRLine [1]), float.Parse (outcropVRLine [2]));
+					double centroidX = double.Parse (outcropVRLine [0]);
+					double centroidY = double.Parse (outcropVRLine [1]);
+					double centroidZ = double.Parse (outcropVRLine [2]);
 					float trend = float.Parse (outcropVRLine [3]);
 					float plunge = float.Parse (outcropVRLine [4]);
 					float hypot = float.Parse (outcropVRLine [5]);
 
 					// Add STDPItem with shift
-					AddSDTPItem (centroid.x - meanX, centroid.y - meanY, centroid.z - minZ, trend, plunge, hypot, "TP");
+					AddSDTPItem ((float)centroidX - meanX, (float)centroidY - meanY, (float)centroidZ - minZ, trend, plunge, hypot, "TP");
 				}
 			}
 
 			file.Close ();
-			WriteSDTPItemsToFile ();
 		}
+
+		WriteSDTPItemsToFile ();
 	}
 }
 

@@ -183,7 +183,7 @@ public class ObjDEM : ScriptableObject {
         {
             for (int j = 0; j < ElevationData.GetLength(1); j++) {
                 double lon = minLong + resolutionInDeg * j;
-                double lat = minLat - resolutionInDeg * i;
+                double lat = maxLat - resolutionInDeg * i;
                 Vector2 UTM = Helpers.LonLatToUTM(lon, lat);
                 float z = (float)ElevationData[i, j];
                 Vector3 point = new Vector3(UTM.x, UTM.y, z);
@@ -214,9 +214,9 @@ public class ObjDEM : ScriptableObject {
 			xRange = xMax - xMin;
 			yRange = yMax - yMin;
 			zRange = zMax - zMin;
-			minZ = Mathf.Floor (zMin);
-			meanX = Mathf.Floor ((xMin + xMax) / 2);
-			meanY = Mathf.Floor ((yMin + yMax) / 2);
+			minZ = zMin;
+			meanX = (xMin + xMax) / 2;
+			meanY = (yMin + yMax) / 2;
 		}
 
         return data.Select(p => new Vector3(p.x - meanX, p.y - meanY, p.z - minZ)).ToList();
@@ -260,9 +260,9 @@ public class ObjDEM : ScriptableObject {
 			xRange = xMax - xMin;
 			yRange = yMax - yMin;
 			zRange = zMax - zMin;
-			minZ = Mathf.Floor (zMin);
-			meanX = Mathf.Floor ((xMin + xMax) / 2);
-			meanY = Mathf.Floor ((yMin + yMax) / 2);
+			minZ = zMin;
+			meanX = (xMin + xMax) / 2;
+			meanY = (yMin + yMax) / 2;
 		}
 
 
@@ -394,9 +394,9 @@ public class ObjDEM : ScriptableObject {
 		xRange = (float)(xMax - xMin);
 		yRange = (float)(yMax - yMin);
 		zRange = (float)(zMax - zMin);
-		minZ = (float)Math.Floor(zMin);
-		meanX = (float)Math.Floor((xMin + xMax) / 2);
-		meanY = (float)Math.Floor((yMin + yMax) / 2);
+		minZ = (float)zMin;
+		meanX = (float)(xMin + xMax) / 2;
+		meanY = (float)(yMin + yMax) / 2;
 
 	
 		xyzPoints = xyzPoints.Select (p => new double[] { p [0] - meanX, p [1] - meanY, p [2] - minZ }).ToList ();

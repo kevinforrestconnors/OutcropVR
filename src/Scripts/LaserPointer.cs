@@ -507,7 +507,8 @@ public class LaserPointer : MonoBehaviour {
 						{
 							means[j] += points[i, j];
 						}
-					}
+					} 
+
 					means[0] /= points.GetLength(0);
 					means[1] /= points.GetLength(0);
 					means[2] /= points.GetLength(0);
