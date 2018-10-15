@@ -7,7 +7,7 @@ OutcropVR is a toolkit for geologists.  One aspect of OutcropVR is of building a
 
 The other aspect is the "game" mode tools.  You can fly around your favorite outcrops and see unique angles that are impossible or difficult to get in real life.  With the laser pointer tool, you can create lines and planes that then display the trend/plunge or strike/dip.  
 
-![A Model of San Francisco Generated Through OutcropVR](/master/outcropVR-sf.png?raw=true "San Francisco")
+![A Model of San Francisco Generated Through OutcropVR](/outcropVR-sf.png?raw=true "San Francisco")
 
 ## Installation
 
